@@ -124,6 +124,34 @@ fn main() {
         .expect("Couldn't write bindings!");
 
     write_proc_table(&out_path, &manifest_dir);
+    write_msvc_exports(&out_path, &manifest_dir);
+}
+
+/// MSVC does not export `#[no_mangle]` symbols from a cdylib on its own: the
+/// linker needs a module-definition file (or one `/EXPORT:` per symbol).
+/// Generate it from the same declaration scan the proc table uses, so the DLL
+/// exports exactly what the headers declare.
+fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
+    let mut names: Vec<String> = Vec::new();
+    for header in ["webgpu.h", "wgpu_upstream.h", "wgpu.h"] {
+        let text = std::fs::read_to_string(manifest_dir.join("ffi").join(header))
+            .unwrap_or_else(|e| panic!("reading {header}: {e}"));
+        for name in declared_procs(&text) {
+            if !names.contains(&name) {
+                names.push(name);
+            }
+        }
+    }
+    names.sort();
+    let mut def = String::from("LIBRARY wgpu_packer\nEXPORTS\n");
+    for name in &names {
+        def.push_str(&format!("    {name}\n"));
+    }
+    std::fs::write(out_path.join("wgpu_packer.def"), def).expect("writing wgpu_packer.def");
+    println!(
+        "cargo:rustc-link-arg={}",
+        out_path.join("wgpu_packer.def").display()
+    );
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
