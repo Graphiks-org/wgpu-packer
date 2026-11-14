@@ -147,6 +147,11 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     for name in &names {
         def.push_str(&format!("    {name}\n"));
     }
+    // Only MSVC's linker understands a .def module-definition file; lld on
+    // Linux/macOS rejects it ("unknown directive: LIBRARY").
+    if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
+        return;
+    }
     std::fs::write(out_path.join("wgpu_packer.def"), def).expect("writing wgpu_packer.def");
     println!(
         "cargo:rustc-link-arg={}",
