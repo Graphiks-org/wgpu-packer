@@ -148,15 +148,15 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
         def.push_str(&format!("    {name}\n"));
     }
     // Only MSVC's linker understands a .def module-definition file; lld on
-    // Linux/macOS rejects it ("unknown directive: LIBRARY").
+    // Linux/macOS rejects it ("unknown directive: LIBRARY"). And only the
+    // cdylib needs it: feeding it to the test binaries or the staticlib makes
+    // link.exe reject it (LNK1107).
     if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
         return;
     }
-    std::fs::write(out_path.join("wgpu_packer.def"), def).expect("writing wgpu_packer.def");
-    println!(
-        "cargo:rustc-link-arg={}",
-        out_path.join("wgpu_packer.def").display()
-    );
+    let def_path = out_path.join("wgpu_packer.def");
+    std::fs::write(&def_path, def).expect("writing wgpu_packer.def");
+    println!("cargo:rustc-cdylib-link-arg={}", def_path.display());
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
