@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-/** Debug uniquement : panique contenue par le wrapper FFI. 1 = contenue, 0 = pas de panique. */
+/** Debug only: panic contained by the FFI wrapper. 1 = contained, 0 = no panic. */
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 
 #ifdef __cplusplus

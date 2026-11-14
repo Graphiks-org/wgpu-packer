@@ -9,8 +9,8 @@ pub fn catch_unwind_contained<T>(name: &str, f: impl FnOnce() -> T) -> Option<T>
                 .downcast_ref::<&str>()
                 .map(|s| s.to_string())
                 .or_else(|| payload.downcast_ref::<String>().cloned())
-                .unwrap_or_else(|| "<panique non-textuelle>".into());
-            eprintln!("[wgpu_packer] panique contenue dans {name}: {msg}");
+                .unwrap_or_else(|| "<non-textual panic>".into());
+            eprintln!("[wgpu_packer] panic contained in {name}: {msg}");
         })
         .ok()
 }

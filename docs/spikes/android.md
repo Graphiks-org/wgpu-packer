@@ -139,8 +139,8 @@ succeeded):
 ```
 $ llvm-nm -gU demo/common/build/bin/androidNativeArm64/debugShared/libwgpu4k_demo.so | grep -c wgpu_packer
 37
-$ strings -a .../libwgpu4k_demo.so | grep "panique contenue"
-$[wgpu_packer] panique contenue dans
+$ strings -a .../libwgpu4k_demo.so | grep "panic contained"
+$[wgpu_packer] panic contained in
 ```
 
 (the string comes from `ffi/src/ffi_utils.rs:13`; the 37 symbols include
@@ -182,7 +182,7 @@ Kotlin (`demo/common/src/commonMain/kotlin/ext.kt`, `println("TRACE : ...")`) fr
 messages from `wgpu_core`, present in **both** archives (v29 as well as
 v30). They therefore do **not** distinguish v29 from our v30. The proof that
 the linked archive is ours is the pair **md5 of `libWGPU.a`** + **`wgpu_packer`
-symbols and the `[wgpu_packer] panique contenue` string in the final `.so`**.
+symbols and the `[wgpu_packer] panic contained` string in the final `.so`**.
 
 ### Unresolved libc++ symbols
 
@@ -238,7 +238,7 @@ A Kotlin/Native 2.4.10 application linking this packer's archive builds,
 installs and **runs** on an Android arm64 emulator: the triangle is
 rendered via Vulkan, the process does not die, and the final `.so` does
 indeed contain packer code (37 `wgpu_packer` symbols, the
-`[wgpu_packer] panique contenue` string) — the linked archive is therefore indeed ours, and
+`[wgpu_packer] panic contained` string) — the linked archive is therefore indeed ours, and
 not wgpu-native v29's.
 
 The claim from the dawn-packer spike ("the K/N link leaves unresolved libc++

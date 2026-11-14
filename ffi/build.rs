@@ -137,7 +137,7 @@ fn write_proc_table(out_path: &PathBuf, manifest_dir: &PathBuf) {
         ));
     }
     table.push_str("        _ => None,\n    }\n}\n");
-    std::fs::write(out_path.join("procs.rs"), table).expect("écriture de procs.rs");
+    std::fs::write(out_path.join("procs.rs"), table).expect("writing procs.rs");
 }
 
 /// Traduction Rust de la grammaire DECL de tests/checks.py : une ligne déclare
