@@ -68,7 +68,12 @@ def nm_exported(lib: pathlib.Path) -> set[str]:
             ["dumpbin", "/exports", str(lib)], capture_output=True, text=True, check=True
         ).stdout
         return parse_dumpbin(raw)
-    raw = subprocess.run(["nm", "-gU", str(lib)], capture_output=True, text=True, check=True).stdout
+    # `nm` exits non-zero on some toolchains when an archive member has no
+    # symbols (e.g. the runner's nm on empty Rust CGUs), and warns about the
+    # `__.SYMDEF` table member. Neither affects the exported symbols we parse
+    # from stdout, so the exit status is not checked; a missing library still
+    # surfaces as an empty stdout and a zero-symbol audit failure.
+    raw = subprocess.run(["nm", "-gU", str(lib)], capture_output=True, text=True).stdout
     syms = set()
     for line in raw.splitlines():
         parts = line.split()

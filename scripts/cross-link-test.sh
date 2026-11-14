@@ -36,11 +36,11 @@ if [[ "$CC" == cl ]]; then
   # shellcheck disable=SC2086
   cl //nologo tests/headers_compile.c //Fo:/tmp/wgpu_tu.obj //c //Iffi/ffi
   # shellcheck disable=SC2086
-  cl //nologo tests/link_main.c /tmp/wgpu_tu.obj "$LIB" $LINK_LIBS //Fe:/tmp/wgpu_cross_link.exe //link //SUBSYSTEM:CONSOLE
+  cl //nologo tests/link_main.c /tmp/wgpu_tu.obj "$LIB" $LINK_LIBS //Iffi/ffi //Fe:/tmp/wgpu_cross_link.exe //link //SUBSYSTEM:CONSOLE
 else
   # shellcheck disable=SC2086
   $CC "${SYSROOT[@]}" -c tests/headers_compile.c -Iffi/ffi -o /tmp/wgpu_tu.o
   # shellcheck disable=SC2086
-  $CC "${SYSROOT[@]}" tests/link_main.c /tmp/wgpu_tu.o "$LIB" $LINK_LIBS -o /tmp/wgpu_cross_link_test
+  $CC "${SYSROOT[@]}" -Iffi/ffi tests/link_main.c /tmp/wgpu_tu.o "$LIB" $LINK_LIBS -o /tmp/wgpu_cross_link_test
 fi
 echo "CROSS_LINK_OK $NAME ($TRIPLE)"

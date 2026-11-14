@@ -83,10 +83,23 @@ jobs:
         uses: android-actions/setup-android@v3
       - if: contains(matrix.target, 'android')
         run: |
-          yes | sdkmanager "ndk;27.0.11902866" > /dev/null
+          # The runner image already ships an NDK; install only when missing,
+          # since `sdkmanager` fails on an already-installed package.
+          if [ ! -d "$ANDROID_HOME/ndk/27.0.11902866" ]; then
+            yes | sdkmanager "ndk;27.0.11902866" > /dev/null
+          fi
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.11902866" >> "$GITHUB_ENV"
       - if: matrix.target == 'windowsMsvcX64'
-        uses: ilammy/msvc-dev-cmd@v1 # dumpbin dans le PATH pour checks.py
+        uses: ilammy/msvc-dev-cmd@v1 # MSVC linker + dumpbin in PATH for checks.py
+      - if: matrix.target == 'windowsMsvcX64'
+        # Git for Windows ships its own /usr/bin/link.exe (a coreutils clone),
+        # which shadows MSVC's link.exe when cargo resolves the linker by name.
+        # Prepending the MSVC bin directory makes the real linker win.
+        shell: pwsh
+        run: |
+          $msvc = (Get-Command link.exe -All | Where-Object { $_.Source -notlike '*Git*' } | Select-Object -First 1).Source
+          $dir = Split-Path $msvc
+          echo "$dir" >> $env:GITHUB_PATH
       - run: ./scripts/sync.sh
       - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
       - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)
