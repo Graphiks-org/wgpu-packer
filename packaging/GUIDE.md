@@ -1,5 +1,32 @@
 # Consommer wgpu-packer depuis Kotlin/Native
 
+## 0. Où trouver les archives
+
+Chaque tag `v<WGPU_VERSION>.<PACKER_VERSION>` publie une release GitHub sur
+`https://github.com/Graphiks-org/wgpu-packer/releases`. Chaque release contient :
+
+- `wgpu-<version>-<kotlinTarget>-<static|shared>.tar.gz` — l'archive ;
+- `SHA256SUMS` — les empreintes de toutes les archives de la release ;
+- `index.json` — la liste des `manifest.json` de toutes les archives.
+
+Vérifiez l'empreinte avant décompression :
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+Le `manifest.json` de l'archive porte `wgpu.crates` et `wgpu.nativeTag` :
+le nom de fichier ne contient que la version des crates, pas celle des
+headers.
+
+Une release publiée est immuable. Pour un correctif, une nouvelle release
+`v30.0.1.1` est publiée ; l'ancienne reste téléchargeable.
+
+Le workflow de publication ne remplace jamais un fichier existant : il ne peut
+donc pas réparer une release dont l'envoi s'est interrompu. Si une release est
+incomplète (archive manquante, `SHA256SUMS` ou `index.json` absent), supprimez
+la release et repoussez le tag, ou publiez une nouvelle `PACKER_VERSION`.
+
 ## 1. Décompresser l'archive
 
 ```bash
