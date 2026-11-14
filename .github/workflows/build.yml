@@ -89,7 +89,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1 # dumpbin dans le PATH pour checks.py
       - run: ./scripts/sync.sh
       - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
-      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + lien statique croisé (finding 5)
+      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)
       - run: ./scripts/package.sh ${{ matrix.target }} static
       - if: contains(fromJSON('["macosArm64","macosX64","linuxX64","linuxArm64","windowsMsvcX64","mingwX64"]'), matrix.target)
         run: ./scripts/package.sh ${{ matrix.target }} shared

@@ -1,11 +1,11 @@
-/* wgpu.h — header d'extensions wgpu-packer.
- * Le standard vit dans webgpu.h (vendored), les additions wgpu-native dans
- * wgpu_upstream.h (vendored). Nos extensions propres sont ajoutées en fin de
- * fichier (Task 2). */
+/* wgpu.h - wgpu-packer extension header.
+ * The standard lives in webgpu.h (vendored), the wgpu-native additions in
+ * wgpu_upstream.h (vendored). Our own extensions are appended at the end of
+ * the file. */
 #include "webgpu.h"
 #include "wgpu_upstream.h"
 
-/* ==== Extensions wgpu-packer ==== */
+/* ==== wgpu-packer extensions ==== */
 #ifdef __cplusplus
 extern "C" {
 #endif
