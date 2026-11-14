@@ -94,12 +94,14 @@ jobs:
       - if: matrix.target == 'windowsMsvcX64'
         # Git for Windows ships its own /usr/bin/link.exe (a coreutils clone),
         # which shadows MSVC's link.exe when cargo resolves the linker by name.
-        # Prepending the MSVC bin directory makes the real linker win.
+        # Point cargo at the real linker explicitly: PATH order is not enough,
+        # because the bash shell prepends Git's usr/bin.
         shell: pwsh
         run: |
           $msvc = (Get-Command link.exe -All | Where-Object { $_.Source -notlike '*Git*' } | Select-Object -First 1).Source
-          $dir = Split-Path $msvc
-          echo "$dir" >> $env:GITHUB_PATH
+          if (-not $msvc) { throw "no MSVC link.exe found" }
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvc" >> $env:GITHUB_ENV
+          echo "using $msvc"
       - run: ./scripts/sync.sh
       - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
       - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)

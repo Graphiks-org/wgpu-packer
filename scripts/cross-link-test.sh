@@ -16,10 +16,17 @@ LINK_LIBS="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; 
 
 # Cross compiler resolution by target family.
 case "$TRIPLE" in
-  *-apple-darwin)        CC="cc -arch $(echo "$TRIPLE" | cut -d- -f1)"; SYSROOT=(-isysroot "$(xcrun --sdk macosx --show-sdk-path)") ;;
+  *-apple-darwin)
+    # Rust triples say `aarch64`/`x86_64`; clang's -arch wants `arm64`/`x86_64`.
+    case "$TRIPLE" in
+      aarch64-*) ARCH=arm64 ;;
+      *)         ARCH=$(echo "$TRIPLE" | cut -d- -f1) ;;
+    esac
+    CC="cc -arch $ARCH"; SYSROOT=(-isysroot "$(xcrun --sdk macosx --show-sdk-path)") ;;
   aarch64-apple-ios)     CC="cc"; SYSROOT=(-isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -target arm64-apple-ios) ;;
   aarch64-apple-ios-sim) CC="cc"; SYSROOT=(-isysroot "$(xcrun --sdk iphonesimulator --show-sdk-path)" -target arm64-apple-ios-simulator) ;;
   aarch64-unknown-linux-gnu) CC="aarch64-linux-gnu-gcc"; SYSROOT=() ;;
+  x86_64-unknown-linux-gnu)  CC="cc"; SYSROOT=() ;;
   x86_64-pc-windows-gnu) CC="x86_64-w64-mingw32-gcc"; SYSROOT=() ;;
   *-linux-android)
     : "${NDK_HOME:?NDK_HOME required}"
