@@ -4,7 +4,7 @@
 
 ```bash
 tar xzf wgpu-<version>-<cible>-static.tar.gz
-# → include/ (webgpu.h, wgpu_upstream.h, wgpu.h) · lib/ (libwgpu_packer.a, link.txt) · LICENSE*
+# → include/ (webgpu.h, wgpu_upstream.h, wgpu.h) · lib/ (libwgpu_packer.a, link.txt) · LICENSE* · manifest.json
 ```
 
 ## 2. cinterop
