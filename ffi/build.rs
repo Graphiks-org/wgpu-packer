@@ -91,6 +91,28 @@ fn main() {
             "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
                 builder = builder.clang_arg("-isysroot").clang_arg(sdk_path("macosx"));
             }
+            // Android: bindgen needs the NDK sysroot to resolve the C library
+            // headers webgpu.h pulls in. NDK_HOME is set by scripts/build-target.sh
+            // (and by CI); without it bindgen cannot parse the header at all.
+            t if t.ends_with("-linux-android") => {
+                if let Ok(ndk) = env::var("NDK_HOME") {
+                    let host = match env::consts::OS {
+                        "macos" => "darwin-x86_64",
+                        _ => "linux-x86_64",
+                    };
+                    let prebuilt = PathBuf::from(&ndk)
+                        .join("toolchains")
+                        .join("llvm")
+                        .join("prebuilt")
+                        .join(host);
+                    let sysroot = prebuilt.join("sysroot");
+                    if sysroot.is_dir() {
+                        builder = builder
+                            .clang_arg(format!("--target={t}"))
+                            .clang_arg(format!("--sysroot={}", sysroot.display()));
+                    }
+                }
+            }
             _ => {}
         }
     }
