@@ -42,7 +42,19 @@ class CI(unittest.TestCase):
         self.assertEqual(trigger["workflow_run"]["types"], ["completed"])
         guard = rel["jobs"]["release"]["if"]
         self.assertIn("conclusion == 'success'", guard)
+        # Sans ce test, un workflow_dispatch lancé sur une branche v... publierait.
+        self.assertIn("github.event.workflow_run.event == 'push'", guard)
         self.assertIn("startsWith(github.event.workflow_run.head_branch, 'v')", guard)
+        # Le téléchargement doit cibler le run déclencheur, et le checkout sa révision.
+        # On inspecte la structure parsée (str() d'un dict YAML utilise des quotes
+        # simples, donc `run-id: ...` n'y apparaîtrait jamais littéralement).
+        steps = rel["jobs"]["release"]["steps"]
+        downloads = [s for s in steps if s.get("uses", "").startswith("actions/download-artifact")]
+        self.assertEqual(len(downloads), 1)
+        self.assertEqual(downloads[0]["with"]["run-id"], "${{ github.event.workflow_run.id }}")
+        checkouts = [s for s in steps if s.get("uses", "").startswith("actions/checkout")]
+        self.assertEqual(len(checkouts), 1)
+        self.assertEqual(checkouts[0]["with"]["ref"], "${{ github.event.workflow_run.head_branch }}")
         # `build` must still run on tag pushes, or workflow_run never fires.
         build_trigger = self.wf.get("on", self.wf.get(True))
         self.assertIn("v*", build_trigger["push"]["tags"])

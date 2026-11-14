@@ -14,7 +14,8 @@ def main(argv):
     for manifest_path in sorted(root.rglob("manifest.json")):
         with manifest_path.open(encoding="utf-8") as handle:
             entries.append(json.load(handle))
-    pathlib.Path(argv[2]).write_text(json.dumps({"schemaVersion": 1, "manifests": entries}, indent=2) + "\n", encoding="utf-8")
+    index = json.dumps({"schemaVersion": 1, "manifests": entries}, indent=2) + "\n"
+    pathlib.Path(argv[2]).write_text(index, encoding="utf-8")
     print(f"index: {len(entries)} manifests")
     return 0
 
