@@ -4,12 +4,12 @@ use std::sync::Mutex;
 
 use wgpu_packer::native::{WGPUInstance, WGPUInstanceDescriptor};
 
-/// Les oracles mémoire partagent un allocateur global : sérialise les tests du
-/// binaire (sinon la baseline d'allocations est mesurée pendant que les tests
-/// voisins allouent sur d'autres threads — échec intermittent).
+/// The memory oracles share a global allocator: serializes the tests of the
+/// binary (otherwise the allocation baseline is measured while neighboring
+/// tests allocate on other threads — intermittent failure).
 pub static TEST_SERIAL: Mutex<()> = Mutex::new(());
 
-/// Allocateur compteur : à déclarer `#[global_allocator]` dans le binaire de test.
+/// Counting allocator: declare it as `#[global_allocator]` in the test binary.
 pub struct CountingAllocator;
 pub static LIVE_ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
 pub static LIVE_BYTES: AtomicU64 = AtomicU64::new(0);
@@ -38,12 +38,12 @@ unsafe impl GlobalAlloc for CountingAllocator {
     }
 }
 
-/// (allocations vivantes, octets vivants) au moment de l'appel.
+/// (live allocations, live bytes) at the time of the call.
 pub fn live() -> (u64, u64) {
     (LIVE_ALLOCATIONS.load(Ordering::SeqCst), LIVE_BYTES.load(Ordering::SeqCst))
 }
 
-/// Instance headless avec descripteur zéro (comme `wgpuCreateInstance(NULL)` en C).
+/// Headless instance with a zeroed descriptor (like `wgpuCreateInstance(NULL)` in C).
 pub unsafe fn make_instance() -> WGPUInstance {
     let desc = std::mem::zeroed::<WGPUInstanceDescriptor>();
     wgpu_packer::wgpuCreateInstance(Some(&desc))
@@ -53,8 +53,8 @@ pub unsafe fn release_instance(instance: WGPUInstance) {
     wgpu_packer::wgpuInstanceRelease(instance);
 }
 
-/// Verrou de sérialisation insensible à l'empoisonnement : un test qui panique
-/// ne doit pas cascader sur les suivants (l'isolitude reste garantie).
+/// Poisoning-insensitive serialization lock: a test that panics must not
+/// cascade onto the following ones (isolation still holds).
 pub fn TEST_SERIAL_LOCKED() -> std::sync::MutexGuard<'static, ()> {
     match TEST_SERIAL.lock() {
         Ok(g) => g,

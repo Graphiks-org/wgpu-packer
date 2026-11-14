@@ -1,6 +1,6 @@
-//! Oracle de gestion mémoire : refcounting, fuites (allocateur compteur),
-//! appariement des mapped ranges, userdata libéré exactement une fois.
-//! L'intention de chaque test est la spécification.
+//! Memory management oracle: refcounting, leaks (counting allocator),
+//! pairing of mapped ranges, userdata freed exactly once.
+//! The intent of each test is the specification.
 
 #[global_allocator]
 static ALLOC: common::CountingAllocator = common::CountingAllocator;
@@ -31,8 +31,8 @@ unsafe fn release_adapters(adapters: &[WGPUAdapter]) {
     }
 }
 
-/// Demande un device sur le premier adapter (synchrone, handler d'erreurs non
-/// capturées installé — le défaut panique). Retourne null sans GPU.
+/// Requests a device on the first adapter (synchronous, uncaptured error
+/// handler installed — the default panics). Returns null without a GPU.
 unsafe fn request_first_device(adapter: WGPUAdapter) -> WGPUDevice {
     static SLOT: AtomicUsize = AtomicUsize::new(0);
     unsafe extern "C" fn on_device(
@@ -90,8 +90,8 @@ fn refcount_release_destroys_at_zero() {
             return;
         };
 
-        // AddRef + Release : refcount 1 -> 2 -> 1, l'objet reste vivant et
-        // utilisable (GetInfo passe).
+        // AddRef + Release: refcount 1 -> 2 -> 1, the object stays alive and
+        // usable (GetInfo succeeds).
         wgpu_packer::wgpuAdapterAddRef(adapter);
         wgpu_packer::wgpuAdapterRelease(adapter);
         let mut info = zeroed::<WGPUAdapterInfo>();
@@ -99,7 +99,7 @@ fn refcount_release_destroys_at_zero() {
         assert_eq!(status, WGPUStatus_Success, "objet vivant après AddRef/Release équilibré");
         wgpu_packer::wgpuAdapterInfoFreeMembers(info);
 
-        release_adapters(&adapters); // dernier Release de chacun : destruction
+        release_adapters(&adapters); // last Release of each one: destruction
         common::release_instance(instance);
     }
 }
@@ -108,15 +108,15 @@ fn refcount_release_destroys_at_zero() {
 fn create_destroy_cycles_return_to_allocation_baseline() {
     let _serial = common::TEST_SERIAL_LOCKED();
     unsafe {
-        // Warm-up : installe les caches paresseux éventuels.
+        // Warm-up: installs any lazy caches.
         for _ in 0..3 {
             let i = common::make_instance();
             common::release_instance(i);
         }
-        // Les threads internes de wgpu s'allouent/s'arrêtent de façon
-        // asynchrone : la baseline est une valeur STABLE (lectures
-        // consécutives égales), pas un instantané — sinon une allocation
-        // transitoire du test précédent fausse la comparaison.
+        // wgpu's internal threads allocate/stop asynchronously: the baseline
+        // is a STABLE value (consecutive reads equal), not a snapshot —
+        // otherwise a transient allocation from the previous test skews the
+        // comparison.
         fn settled_live() -> u64 {
             let mut last = u64::MAX;
             let mut stable = 0;
@@ -210,7 +210,7 @@ fn const_mapped_range_after_unmap_returns_null() {
             return;
         }
 
-        // Chemin de lecture symétrique : COPY_DST|MAP_READ → map(Read).
+        // Symmetric read path: COPY_DST|MAP_READ → map(Read).
         let mut bdesc = zeroed::<WGPUBufferDescriptor>();
         bdesc.usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst;
         bdesc.size = 16;
@@ -224,7 +224,7 @@ fn const_mapped_range_after_unmap_returns_null() {
         let r1 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
         assert!(!r1.is_null(), "plage const mappée disponible entre map et unmap");
         wgpu_packer::wgpuBufferUnmap(buffer);
-        // Spec §4.1 : après unmap, NULL — jamais de panique à travers l'ABI.
+        // Spec §4.1: after unmap, NULL — never a panic across the ABI.
         let r2 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
         assert!(r2.is_null(), "get_const_mapped_range après unmap doit renvoyer NULL");
 
@@ -261,7 +261,7 @@ fn map_async_userdata_released_exactly_once() {
             _u2: *mut core::ffi::c_void,
         ) {
             CALLS.fetch_add(1, Ordering::SeqCst);
-            drop(Box::from_raw(userdata1 as *mut usize)); // libéré ICI, exactement une fois
+            drop(Box::from_raw(userdata1 as *mut usize)); // freed HERE, exactly once
         }
 
         let buffer = make_buffer(device, 8);
@@ -272,8 +272,8 @@ fn map_async_userdata_released_exactly_once() {
         info.userdata1 = userdata;
 
         wgpu_packer::wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, 8, info);
-        // CONTRAT : poll AVANT tout Release du buffer — c'est le poll qui livre
-        // le callback (et libère le userdata).
+        // CONTRACT: poll BEFORE any Release of the buffer — the poll delivers
+        // the callback (and frees the userdata).
         wgpu_packer::wgpuDevicePoll(device, true, None);
         assert_eq!(CALLS.load(Ordering::SeqCst), 1, "userdata livré/libéré exactement une fois");
 
