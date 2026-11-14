@@ -46,7 +46,7 @@ unsafe fn enumerate(instance: WGPUInstance) -> Vec<WGPUAdapter> {
         None,
         adapters.as_mut_ptr(),
     );
-    assert_eq!(written, count, "le second appel d'énumération remplit tout");
+    assert_eq!(written, count, "second enumeration call fills everything");
     adapters
 }
 
@@ -103,17 +103,17 @@ unsafe fn request_first_device(adapter: WGPUAdapter) -> WGPUDevice {
 fn instance_lifecycle_enumeration_and_string_conversion() {
     unsafe {
         let instance = common::make_instance();
-        assert!(!instance.is_null(), "instance non NULL");
+        assert!(!instance.is_null(), "instance is not NULL");
 
         let adapters = enumerate(instance);
         if let Some(adapter) = adapters.first() {
             let mut info = zeroed::<WGPUAdapterInfo>();
             let status = wgpu_packer::wgpuAdapterGetInfo(*adapter, Some(&mut info));
-            assert_eq!(status, WGPUStatus_Success, "GetInfo doit réussir");
+            assert_eq!(status, WGPUStatus_Success, "GetInfo must succeed");
             let vendor = string_view_bytes(&info.vendor);
             assert!(
                 std::str::from_utf8(&vendor).is_ok(),
-                "le nom vendor doit être de l'UTF-8 valide (got {vendor:?})"
+                "vendor name must be valid UTF-8 (got {vendor:?})"
             );
             wgpu_packer::wgpuAdapterInfoFreeMembers(info);
         }
@@ -169,7 +169,7 @@ fn device_request_buffer_map_and_lifecycle() {
         assert_eq!(
             STATUS.load(Ordering::SeqCst),
             WGPURequestDeviceStatus_Success as usize,
-            "requestDevice doit réussir"
+            "requestDevice must succeed"
         );
         let device = DEVICE.load(Ordering::SeqCst) as WGPUDevice;
         assert!(!device.is_null());
@@ -198,15 +198,15 @@ fn device_request_buffer_map_and_lifecycle() {
         map_cb.callback = Some(on_mapped);
         let map_future =
             wgpu_packer::wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, 16, map_cb);
-        assert_ne!(map_future.id, 0, "MapAsync retourne une future réelle");
+        assert_ne!(map_future.id, 0, "MapAsync returns a real future");
         wgpu_packer::wgpuDevicePoll(device, true, None);
 
-        assert_eq!(MAP_CALLS.load(Ordering::SeqCst), 1, "map_async livré exactement une fois");
+        assert_eq!(MAP_CALLS.load(Ordering::SeqCst), 1, "map_async delivered exactly once");
         assert_eq!(MAP_STATUS.load(Ordering::SeqCst), WGPUMapAsyncStatus_Success as usize);
-        assert_eq!(UNCAPPED_ERRORS.load(Ordering::SeqCst), 0, "aucune erreur non capturée");
+        assert_eq!(UNCAPPED_ERRORS.load(Ordering::SeqCst), 0, "no uncaptured error");
 
         let range = wgpu_packer::wgpuBufferGetMappedRange(buffer, 0, 16);
-        assert!(!range.is_null(), "plage mappée accessible après map");
+        assert!(!range.is_null(), "mapped range accessible after map");
         *range = 0xAB;
         wgpu_packer::wgpuBufferUnmap(buffer);
 
@@ -230,12 +230,12 @@ fn get_proc_address_and_instance_features() {
         ] {
             assert!(
                 wgpu_packer::wgpuGetProcAddress(sv(name.as_bytes())).is_some(),
-                "{name} doit être résoluble"
+                "{name} must be resolvable"
             );
         }
         assert!(
             wgpu_packer::wgpuGetProcAddress(sv(b"wgpuDoesNotExist")).is_none(),
-            "nom inconnu => NULL"
+            "unknown name => NULL"
         );
         let empty = WGPUStringView {
             length: 0,
@@ -243,18 +243,18 @@ fn get_proc_address_and_instance_features() {
         };
         assert!(
             wgpu_packer::wgpuGetProcAddress(empty).is_none(),
-            "nom vide => NULL"
+            "empty name => NULL"
         );
 
         // Instance features: non-empty list, consistent with HasInstanceFeature.
         let mut features = zeroed::<WGPUSupportedInstanceFeatures>();
         wgpu_packer::wgpuGetInstanceFeatures(Some(&mut features));
-        assert!(features.featureCount > 0, "au moins une feature d'instance");
+        assert!(features.featureCount > 0, "at least one instance feature");
         let list =
             std::slice::from_raw_parts(features.features, features.featureCount);
         assert!(
             list.contains(&WGPUInstanceFeatureName_MultipleDevicesPerAdapter),
-            "wgc supporte plusieurs devices par adapter"
+            "wgc supports multiple devices per adapter"
         );
         assert_eq!(
             wgpu_packer::wgpuHasInstanceFeature(WGPUInstanceFeatureName_MultipleDevicesPerAdapter),
@@ -281,12 +281,12 @@ fn device_get_adapter_info_matches_adapter() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle adapter info");
+        assert!(!device.is_null(), "device required for the adapter info oracle");
 
         // The device exposes the same information as its adapter.
         let mut dev_info = zeroed::<WGPUAdapterInfo>();
         let status = wgpu_packer::wgpuDeviceGetAdapterInfo(device, Some(&mut dev_info));
-        assert_eq!(status, WGPUStatus_Success, "DeviceGetAdapterInfo doit réussir");
+        assert_eq!(status, WGPUStatus_Success, "DeviceGetAdapterInfo must succeed");
         let mut ad_info = zeroed::<WGPUAdapterInfo>();
         let status = wgpu_packer::wgpuAdapterGetInfo(adapter, Some(&mut ad_info));
         assert_eq!(status, WGPUStatus_Success);
@@ -294,13 +294,13 @@ fn device_get_adapter_info_matches_adapter() {
         assert_eq!(
             string_view_bytes(&dev_info.device),
             string_view_bytes(&ad_info.device),
-            "même nom d'adaptateur via device et via adapter"
+            "same adapter name via device and via adapter"
         );
         assert_eq!(dev_info.backendType, ad_info.backendType);
         assert_eq!(dev_info.vendorID, ad_info.vendorID);
         assert!(
             std::str::from_utf8(&string_view_bytes(&dev_info.description)).is_ok(),
-            "description UTF-8 valide"
+            "valid UTF-8 description"
         );
 
         wgpu_packer::wgpuAdapterInfoFreeMembers(dev_info);
@@ -322,7 +322,7 @@ fn buffer_map_state_and_read_write_mapped_range() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle map state");
+        assert!(!device.is_null(), "device required for the map state oracle");
 
         let mut bdesc = zeroed::<WGPUBufferDescriptor>();
         bdesc.usage = WGPUBufferUsage_MapWrite | WGPUBufferUsage_CopySrc;
@@ -332,7 +332,7 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer),
             WGPUBufferMapState_Unmapped,
-            "buffer neuf non mappé"
+            "new buffer is unmapped"
         );
 
         static MAP_STATUS: AtomicUsize = AtomicUsize::new(usize::MAX);
@@ -353,14 +353,14 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer),
             WGPUBufferMapState_Pending,
-            "map async en attente"
+            "map async is pending"
         );
         wgpu_packer::wgpuDevicePoll(device, true, None);
         assert_eq!(MAP_STATUS.load(Ordering::SeqCst), WGPUMapAsyncStatus_Success as usize);
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer),
             WGPUBufferMapState_Mapped,
-            "map livré => mappé"
+            "map delivered => mapped"
         );
 
         // WaitAnyOnly mode: completion at device poll BUT callback held back
@@ -387,12 +387,12 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             WAITONLY_CALLS.load(Ordering::SeqCst),
             0,
-            "WaitAnyOnly : pas de livraison au poll du device"
+            "WaitAnyOnly: no delivery at the device poll"
         );
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer),
             WGPUBufferMapState_Mapped,
-            "l'opération est complétée (état), seul le callback est retenu"
+            "operation completed (state), only the callback is held back"
         );
         let mut wait_info = WGPUFutureWaitInfo {
             future: waitonly_future,
@@ -401,10 +401,10 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut wait_info, 0),
             WGPUWaitStatus_Success,
-            "WaitAny livre la future complétée"
+            "WaitAny delivers the completed future"
         );
-        assert_eq!(wait_info.completed, 1, "flag completed posé");
-        assert_eq!(WAITONLY_CALLS.load(Ordering::SeqCst), 1, "callback livré par WaitAny");
+        assert_eq!(wait_info.completed, 1, "completed flag set");
+        assert_eq!(WAITONLY_CALLS.load(Ordering::SeqCst), 1, "callback delivered by WaitAny");
         assert_eq!(
             WAITONLY_STATUS.load(Ordering::SeqCst),
             WGPUMapAsyncStatus_Success as usize
@@ -413,7 +413,7 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut wait_info, 0),
             WGPUWaitStatus_Error,
-            "future déjà livrée => Error"
+            "future already delivered => Error"
         );
         // The buffer stays mapped: the Write/ReadMappedRange section below
         // exercises this mapping.
@@ -426,7 +426,7 @@ fn buffer_map_state_and_read_write_mapped_range() {
             payload.as_ptr() as *const core::ffi::c_void,
             payload.len(),
         );
-        assert_eq!(status, WGPUStatus_Success, "écriture dans la plage mappée");
+        assert_eq!(status, WGPUStatus_Success, "write into the mapped range");
         let mut out = [0u8; 16];
         let status = wgpu_packer::wgpuBufferReadMappedRange(
             buffer,
@@ -434,8 +434,8 @@ fn buffer_map_state_and_read_write_mapped_range() {
             out.as_mut_ptr() as *mut core::ffi::c_void,
             out.len(),
         );
-        assert_eq!(status, WGPUStatus_Success, "lecture de la plage mappée");
-        assert_eq!(out, payload, "aller-retour Read/WriteMappedRange");
+        assert_eq!(status, WGPUStatus_Success, "read from the mapped range");
+        assert_eq!(out, payload, "Read/WriteMappedRange round trip");
 
         // Rejections: WGPU_WHOLE_MAP_SIZE not accepted, NULL data, out of bounds.
         let mut scratch = [0u8; 8];
@@ -447,12 +447,12 @@ fn buffer_map_state_and_read_write_mapped_range() {
                 usize::MAX,
             ),
             WGPUStatus_Error,
-            "WGPU_WHOLE_MAP_SIZE refusé"
+            "WGPU_WHOLE_MAP_SIZE rejected"
         );
         assert_eq!(
             wgpu_packer::wgpuBufferReadMappedRange(buffer, 0, std::ptr::null_mut(), 8),
             WGPUStatus_Error,
-            "destination NULL refusée"
+            "NULL destination rejected"
         );
         assert_eq!(
             wgpu_packer::wgpuBufferReadMappedRange(
@@ -462,14 +462,14 @@ fn buffer_map_state_and_read_write_mapped_range() {
                 16,
             ),
             WGPUStatus_Error,
-            "plage hors bornes refusée"
+            "out-of-bounds range rejected"
         );
 
         wgpu_packer::wgpuBufferUnmap(buffer);
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer),
             WGPUBufferMapState_Unmapped,
-            "unmap => non mappé"
+            "unmap => unmapped"
         );
         assert_eq!(
             wgpu_packer::wgpuBufferReadMappedRange(
@@ -479,7 +479,7 @@ fn buffer_map_state_and_read_write_mapped_range() {
                 8,
             ),
             WGPUStatus_Error,
-            "lecture hors mapping refusée (abort contenu, pas de panique)"
+            "read outside the mapping rejected (contained abort, no panic)"
         );
 
         // mappedAtCreation: mapped as soon as it is created.
@@ -492,13 +492,13 @@ fn buffer_map_state_and_read_write_mapped_range() {
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer2),
             WGPUBufferMapState_Mapped,
-            "mappedAtCreation => mappé"
+            "mappedAtCreation => mapped"
         );
         wgpu_packer::wgpuBufferDestroy(buffer2);
         assert_eq!(
             wgpu_packer::wgpuBufferGetMapState(buffer2),
             WGPUBufferMapState_Unmapped,
-            "destroy => non mappé"
+            "destroy => unmapped"
         );
         wgpu_packer::wgpuBufferRelease(buffer2);
 
@@ -532,7 +532,7 @@ fn async_pipeline_creation_and_error_routing() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle pipeline async");
+        assert!(!device.is_null(), "device required for the async pipeline oracle");
         let shader = make_compute_shader(device);
         assert!(!shader.is_null());
 
@@ -556,14 +556,14 @@ fn async_pipeline_creation_and_error_routing() {
         cb.mode = WGPUCallbackMode_AllowSpontaneous;
         cb.callback = Some(on_pipeline);
         let future = wgpu_packer::wgpuDeviceCreateComputePipelineAsync(device, Some(&cdesc), cb);
-        assert_ne!(future.id, 0, "future réelle (complétée avant le retour)");
+        assert_ne!(future.id, 0, "real future (completed before the return)");
         assert_eq!(
             STATUS.load(Ordering::SeqCst),
             WGPUCreatePipelineAsyncStatus_Success as usize,
-            "création async réussie (AllowSpontaneous => callback avant retour)"
+            "async creation succeeded (AllowSpontaneous => callback before return)"
         );
         let pipeline = PIPELINE.load(Ordering::SeqCst) as WGPUComputePipeline;
-        assert!(!pipeline.is_null(), "pipeline livré au callback");
+        assert!(!pipeline.is_null(), "pipeline delivered to the callback");
         wgpu_packer::wgpuComputePipelineRelease(pipeline);
 
         // Error path: unknown entry point -> ValidationError at the callback
@@ -579,7 +579,7 @@ fn async_pipeline_creation_and_error_routing() {
         ) {
             ERR_STATUS.store(status as usize, Ordering::SeqCst);
             ERR_MSG_LEN.store(message.length, Ordering::SeqCst);
-            assert!(pipeline.is_null(), "aucun pipeline sur erreur");
+            assert!(pipeline.is_null(), "no pipeline on error");
         }
         let mut bad = zeroed::<WGPUComputePipelineDescriptor>();
         bad.compute.module = shader;
@@ -589,13 +589,13 @@ fn async_pipeline_creation_and_error_routing() {
         cb_err.callback = Some(on_pipeline_error);
         let err_future =
             wgpu_packer::wgpuDeviceCreateComputePipelineAsync(device, Some(&bad), cb_err);
-        assert_ne!(err_future.id, 0, "même en erreur, la future se complète");
+        assert_ne!(err_future.id, 0, "even on error, the future completes");
         assert_eq!(
             ERR_STATUS.load(Ordering::SeqCst),
             WGPUCreatePipelineAsyncStatus_ValidationError as usize,
-            "erreur de validation livrée au callback"
+            "validation error delivered to the callback"
         );
-        assert!(ERR_MSG_LEN.load(Ordering::SeqCst) > 0, "message explicite fourni");
+        assert!(ERR_MSG_LEN.load(Ordering::SeqCst) > 0, "explicit message provided");
 
         wgpu_packer::wgpuShaderModuleRelease(shader);
         wgpu_packer::wgpuDeviceRelease(device);
@@ -618,13 +618,13 @@ fn wait_any_validation_and_device_lost_future() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 0, std::ptr::null_mut(), 1),
             WGPUWaitStatus_Error,
-            "timeout sans future => Error"
+            "timeout without a future => Error"
         );
         // Null pointer with futureCount > 0: invalid.
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, std::ptr::null_mut(), 0),
             WGPUWaitStatus_Error,
-            "futures NULL avec futureCount > 0 => Error"
+            "NULL futures with futureCount > 0 => Error"
         );
 
         let adapters = enumerate(instance);
@@ -639,11 +639,11 @@ fn wait_any_validation_and_device_lost_future() {
         // Lost future: real, stable, never completed on a healthy
         // device (passive loss detection — cf. GUIDE).
         let lost = wgpu_packer::wgpuDeviceGetLostFuture(device);
-        assert_ne!(lost.id, 0, "la future de perte n'est pas la sentinelle NULL");
+        assert_ne!(lost.id, 0, "the lost future is not the NULL sentinel");
         assert_eq!(
             wgpu_packer::wgpuDeviceGetLostFuture(device).id,
             lost.id,
-            "id stable entre appels"
+            "stable id across calls"
         );
 
         // Untimed wait (timeout 0): a single non-blocking poll, the
@@ -655,7 +655,7 @@ fn wait_any_validation_and_device_lost_future() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut info, 0),
             WGPUWaitStatus_TimedOut,
-            "timeout 0 = poll unique, sans blocage"
+            "timeout 0 = single poll, no blocking"
         );
         assert_eq!(info.completed, 0);
 
@@ -664,7 +664,7 @@ fn wait_any_validation_and_device_lost_future() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut info, 1),
             WGPUWaitStatus_Error,
-            "timeoutNS > 0 exige la feature TimedWaitAny à la création"
+            "timeoutNS > 0 requires the TimedWaitAny feature at creation"
         );
 
         // Invalid futures: zero id, duplicate.
@@ -675,7 +675,7 @@ fn wait_any_validation_and_device_lost_future() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut null_info, 0),
             WGPUWaitStatus_Error,
-            "id 0 (sentinelle) => Error"
+            "id 0 (sentinel) => Error"
         );
         let mut dup = [
             WGPUFutureWaitInfo {
@@ -690,7 +690,7 @@ fn wait_any_validation_and_device_lost_future() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 2, dup.as_mut_ptr(), 0),
             WGPUWaitStatus_Error,
-            "doublon dans la liste => Error"
+            "duplicate in the list => Error"
         );
 
         wgpu_packer::wgpuDeviceRelease(device);
@@ -708,7 +708,7 @@ fn timed_wait_any_feature_and_delivery_modes() {
         idesc.requiredFeatures = features.as_ptr();
         idesc.requiredFeatureCount = 1;
         let instance = wgpu_packer::wgpuCreateInstance(Some(&idesc));
-        assert!(!instance.is_null(), "création avec TimedWaitAny acceptée");
+        assert!(!instance.is_null(), "creation with TimedWaitAny accepted");
 
         // Limits: timedWaitAnyMaxCount non-zero (no real limit).
         let mut limits = zeroed::<WGPUInstanceLimits>();
@@ -719,7 +719,7 @@ fn timed_wait_any_feature_and_delivery_modes() {
         assert_eq!(
             limits.timedWaitAnyMaxCount,
             usize::MAX,
-            "pas de limite réelle sur le nombre de futures"
+            "no real limit on the number of futures"
         );
 
         let adapters = enumerate(instance);
@@ -729,7 +729,7 @@ fn timed_wait_any_feature_and_delivery_modes() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle timed wait");
+        assert!(!device.is_null(), "device required for the timed wait oracle");
 
         // Timed wait that succeeds: map in WaitAnyOnly, completed by
         // WaitAny's internal poll.
@@ -762,10 +762,10 @@ fn timed_wait_any_feature_and_delivery_modes() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut info, 100_000_000),
             WGPUWaitStatus_Success,
-            "attente temporisée réussie (complétion par le poll interne)"
+            "timed wait succeeded (completion by the internal poll)"
         );
         assert_eq!(info.completed, 1);
-        assert_eq!(TIMED_CALLS.load(Ordering::SeqCst), 1, "callback livré");
+        assert_eq!(TIMED_CALLS.load(Ordering::SeqCst), 1, "callback delivered");
         assert_eq!(
             TIMED_STATUS.load(Ordering::SeqCst),
             WGPUMapAsyncStatus_Success as usize
@@ -781,9 +781,9 @@ fn timed_wait_any_feature_and_delivery_modes() {
         assert_eq!(
             wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut lost_info, 5_000_000),
             WGPUWaitStatus_TimedOut,
-            "expiration après le timeout (5 ms)"
+            "expired after the timeout (5 ms)"
         );
-        assert_eq!(lost_info.completed, 0, "aucune complétion signalée");
+        assert_eq!(lost_info.completed, 0, "no completion reported");
 
         // AllowProcessEvents mode: completion at device poll, callback
         // delivered by wgpuInstanceProcessEvents (not before).
@@ -805,13 +805,13 @@ fn timed_wait_any_feature_and_delivery_modes() {
         assert_eq!(
             PE_CALLS.load(Ordering::SeqCst),
             0,
-            "AllowProcessEvents : pas de livraison au poll du device"
+            "AllowProcessEvents: no delivery at the device poll"
         );
         wgpu_packer::wgpuInstanceProcessEvents(instance);
         assert_eq!(
             PE_CALLS.load(Ordering::SeqCst),
             1,
-            "livré par ProcessEvents"
+            "delivered by ProcessEvents"
         );
 
         wgpu_packer::wgpuBufferRelease(buffer);
@@ -906,7 +906,7 @@ fn texture_binding_view_dimension_explicit_and_derived() {
         assert_eq!(
             wgpu_packer::wgpuTextureGetTextureBindingViewDimension(one_d),
             WGPUTextureViewDimension_1D,
-            "valeur chaînée explicite respectée"
+            "explicit chained value honored"
         );
         wgpu_packer::wgpuTextureRelease(one_d);
 
@@ -930,7 +930,7 @@ fn bind_group_layout_defaults_and_storage_binding_usage() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle binding layouts");
+        assert!(!device.is_null(), "device required for the binding layouts oracle");
 
         // Slot 0: texture with the header INIT macros' defaults
         // (viewDimension left Undefined). Slot 1: storage texture,
@@ -947,7 +947,7 @@ fn bind_group_layout_defaults_and_storage_binding_usage() {
         ldesc.entries = entries.as_ptr();
         ldesc.entryCount = entries.len();
         let layout = wgpu_packer::wgpuDeviceCreateBindGroupLayout(device, Some(&ldesc));
-        assert!(!layout.is_null(), "défauts header (viewDimension 2D) acceptés");
+        assert!(!layout.is_null(), "header defaults (viewDimension 2D) accepted");
 
         // Sampled texture + storage texture: the
         // WGPUTextureUsage_StorageBinding bit must survive the mapping (audit
@@ -984,7 +984,7 @@ fn bind_group_layout_defaults_and_storage_binding_usage() {
         let bind_group = wgpu_packer::wgpuDeviceCreateBindGroup(device, Some(&bdesc));
         assert!(
             !bind_group.is_null(),
-            "bind group valide : défauts 2D + usage StorageBinding relayés"
+            "valid bind group: 2D defaults + StorageBinding usage relayed"
         );
 
         wgpu_packer::wgpuBindGroupRelease(bind_group);
@@ -1013,7 +1013,7 @@ fn render_pipeline_vertex_bgra_format_and_hole() {
             return;
         };
         let device = request_first_device(adapter);
-        assert!(!device.is_null(), "device requis pour l'oracle vertex formats");
+        assert!(!device.is_null(), "device required for the vertex formats oracle");
 
         const WGSL: &[u8] = b"struct VOut { @builtin(position) pos: vec4<f32>, }
 @vertex fn vs(@location(0) p: vec4<f32>) -> VOut { var o: VOut; o.pos = p; return o; }
@@ -1056,7 +1056,7 @@ fn render_pipeline_vertex_bgra_format_and_hole() {
         let pipeline = wgpu_packer::wgpuDeviceCreateRenderPipeline(device, Some(&pdesc));
         assert!(
             !pipeline.is_null(),
-            "pipeline créé : format BGRA mappé + trou vertex accepté"
+            "pipeline created: BGRA format mapped + vertex hole accepted"
         );
 
         wgpu_packer::wgpuRenderPipelineRelease(pipeline);
@@ -1095,7 +1095,7 @@ fn pop_error_scope_empty_stack_returns_error_status() {
             POP_TYPE.store(typ as usize, Ordering::SeqCst);
             assert!(
                 message.data.is_null() || message.length == 0,
-                "message vide sur pile vide"
+                "empty message on empty stack"
             );
         }
         let mut cb = zeroed::<WGPUPopErrorScopeCallbackInfo>();
@@ -1104,11 +1104,11 @@ fn pop_error_scope_empty_stack_returns_error_status() {
 
         // No PushErrorScope: the pop must deliver Error, without abort.
         let future = wgpu_packer::wgpuDevicePopErrorScope(device, cb);
-        assert_ne!(future.id, 0, "même en erreur, la future est réelle");
+        assert_ne!(future.id, 0, "even on error, the future is real");
         assert_eq!(
             POP_STATUS.load(Ordering::SeqCst),
             WGPUPopErrorScopeStatus_Error as usize,
-            "pile vide => statut Error (webgpu.h)"
+            "empty stack => Error status (webgpu.h)"
         );
         assert_eq!(
             POP_TYPE.load(Ordering::SeqCst),
@@ -1170,10 +1170,10 @@ fn map_async_whole_map_size() {
         assert_eq!(
             MAP_STATUS.load(Ordering::SeqCst),
             WGPUMapAsyncStatus_Success as usize,
-            "WGPU_WHOLE_MAP_SIZE => mapping jusqu'à la fin"
+            "WGPU_WHOLE_MAP_SIZE => mapping through the end"
         );
         let range = wgpu_packer::wgpuBufferGetMappedRange(buffer, 0, 16);
-        assert!(!range.is_null(), "plage complète accessible");
+        assert!(!range.is_null(), "full range accessible");
         *range = 0xCD;
         wgpu_packer::wgpuBufferUnmap(buffer);
 

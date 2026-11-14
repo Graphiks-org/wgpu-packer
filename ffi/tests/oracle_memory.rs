@@ -96,7 +96,7 @@ fn refcount_release_destroys_at_zero() {
         wgpu_packer::wgpuAdapterRelease(adapter);
         let mut info = zeroed::<WGPUAdapterInfo>();
         let status = wgpu_packer::wgpuAdapterGetInfo(adapter, Some(&mut info));
-        assert_eq!(status, WGPUStatus_Success, "objet vivant après AddRef/Release équilibré");
+        assert_eq!(status, WGPUStatus_Success, "object alive after a balanced AddRef/Release");
         wgpu_packer::wgpuAdapterInfoFreeMembers(info);
 
         release_adapters(&adapters); // last Release of each one: destruction
@@ -133,7 +133,7 @@ fn create_destroy_cycles_return_to_allocation_baseline() {
                 }
                 last = cur;
             }
-            panic!("le compteur d'allocations ne se stabilise pas (dernier : {last})");
+            panic!("the allocation counter does not settle (last: {last})");
         }
 
         for _ in 0..3 {
@@ -148,7 +148,7 @@ fn create_destroy_cycles_return_to_allocation_baseline() {
         let after = settled_live();
         assert_eq!(
             after, base,
-            "les cycles create/destroy doivent retourner à la baseline stabilisée"
+            "create/destroy cycles must return to the settled baseline"
         );
     }
 }
@@ -179,11 +179,11 @@ fn mapped_range_pairing() {
         wgpu_packer::wgpuDevicePoll(device, true, None);
 
         let r1 = wgpu_packer::wgpuBufferGetMappedRange(buffer, 0, 32);
-        assert!(!r1.is_null(), "plage mappée disponible entre map et unmap");
+        assert!(!r1.is_null(), "mapped range available between map and unmap");
         *r1 = 0xCD;
         wgpu_packer::wgpuBufferUnmap(buffer);
         let r2 = wgpu_packer::wgpuBufferGetMappedRange(buffer, 0, 32);
-        assert!(r2.is_null(), "get_mapped_range après unmap doit renvoyer NULL");
+        assert!(r2.is_null(), "get_mapped_range after unmap must return NULL");
 
         wgpu_packer::wgpuBufferRelease(buffer);
         wgpu_packer::wgpuDeviceRelease(device);
@@ -222,11 +222,11 @@ fn const_mapped_range_after_unmap_returns_null() {
         wgpu_packer::wgpuDevicePoll(device, true, None);
 
         let r1 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
-        assert!(!r1.is_null(), "plage const mappée disponible entre map et unmap");
+        assert!(!r1.is_null(), "const mapped range available between map and unmap");
         wgpu_packer::wgpuBufferUnmap(buffer);
         // Spec §4.1: after unmap, NULL — never a panic across the ABI.
         let r2 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
-        assert!(r2.is_null(), "get_const_mapped_range après unmap doit renvoyer NULL");
+        assert!(r2.is_null(), "get_const_mapped_range after unmap must return NULL");
 
         wgpu_packer::wgpuBufferRelease(buffer);
         wgpu_packer::wgpuDeviceRelease(device);
@@ -275,7 +275,7 @@ fn map_async_userdata_released_exactly_once() {
         // CONTRACT: poll BEFORE any Release of the buffer — the poll delivers
         // the callback (and frees the userdata).
         wgpu_packer::wgpuDevicePoll(device, true, None);
-        assert_eq!(CALLS.load(Ordering::SeqCst), 1, "userdata livré/libéré exactement une fois");
+        assert_eq!(CALLS.load(Ordering::SeqCst), 1, "userdata delivered/freed exactly once");
 
         wgpu_packer::wgpuBufferRelease(buffer);
         wgpu_packer::wgpuDeviceRelease(device);
