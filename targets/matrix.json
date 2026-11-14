@@ -57,7 +57,7 @@
       "linkages": [
         "static"
       ],
-      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit -framework Foundation -liconv",
       "deployEnv": {
         "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
       },
@@ -77,7 +77,7 @@
       "linkages": [
         "static"
       ],
-      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit -framework Foundation -liconv",
       "deployEnv": {
         "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
       },
@@ -140,7 +140,7 @@
         "static",
         "shared"
       ],
-      "linkLibs": "-luser32 -lgdi32 -ldxgi -ld3d12",
+      "linkLibs": "-lws2_32 -luserenv -lntdll -lole32 -loleaut32 -luuid -lbcrypt -ldbghelp",
       "deployEnv": {},
       "status": "v1"
     },
