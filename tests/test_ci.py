@@ -30,13 +30,22 @@ class CI(unittest.TestCase):
             self.assertIn("cargo test ", runs)
             self.assertIn("--release", runs)
 
-    def test_release_job_gated_on_tag_and_build(self):
-        rel = self.wf["jobs"]["release"]
-        self.assertIn("build", rel["needs"])
-        self.assertIn("kotlin_smoke", rel["needs"])
+    def test_release_workflow_gated_on_tag_and_build(self):
+        # Publication lives in its own workflow now, triggered by the `build`
+        # run completing: artifacts are run-scoped, so a push-on-tag workflow
+        # cannot see them. The tag is read from workflow_run.head_branch.
+        with open(".github/workflows/release.yml") as f:
+            rel = yaml.safe_load(f)
         # pyyaml parse la clé `on:` en booléen True (YAML 1.1)
-        trigger = self.wf.get("on", self.wf.get(True))
-        self.assertIn("v*", trigger["push"]["tags"])
+        trigger = rel.get("on", rel.get(True))
+        self.assertEqual(trigger["workflow_run"]["workflows"], ["build"])
+        self.assertEqual(trigger["workflow_run"]["types"], ["completed"])
+        guard = rel["jobs"]["release"]["if"]
+        self.assertIn("conclusion == 'success'", guard)
+        self.assertIn("startsWith(github.event.workflow_run.head_branch, 'v')", guard)
+        # `build` must still run on tag pushes, or workflow_run never fires.
+        build_trigger = self.wf.get("on", self.wf.get(True))
+        self.assertIn("v*", build_trigger["push"]["tags"])
 
     def test_kotlin_smoke_consumes_build_artifact(self):
         ks = self.wf["jobs"]["kotlin_smoke"]
