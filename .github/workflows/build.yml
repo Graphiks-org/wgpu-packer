@@ -91,7 +91,7 @@ jobs:
       - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
       - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + lien statique croisé (finding 5)
       - run: ./scripts/package.sh ${{ matrix.target }} static
-      - if: contains(fromJSON('["macosArm64","macosX64","linuxX64","linuxArm64","windowsMsvcX64","mingwX64","androidNativeArm64","androidNativeX64"]'), matrix.target)
+      - if: contains(fromJSON('["macosArm64","macosX64","linuxX64","linuxArm64","windowsMsvcX64","mingwX64"]'), matrix.target)
         run: ./scripts/package.sh ${{ matrix.target }} shared
       - uses: actions/upload-artifact@v4
         with:

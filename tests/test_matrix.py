@@ -18,6 +18,12 @@ class Matrix(unittest.TestCase):
         v1 = [t for t in matrix.load()["targets"] if t["status"] == "v1"]
         self.assertEqual(len(v1), 10)
 
+    def test_android_targets_are_static_only(self):
+        # docs/spikes/android.md ne prouve que le mode static (cf. « Limites »).
+        for t in matrix.load()["targets"]:
+            if t["os"] == "android":
+                self.assertEqual(t["linkages"], ["static"], t["kotlinTarget"])
+
     def test_schema(self):
         for t in matrix.load()["targets"]:
             self.assertTrue(REQUIRED <= set(t), f"champs manquants dans {t['kotlinTarget']}")

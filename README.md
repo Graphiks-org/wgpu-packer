@@ -40,8 +40,8 @@ are built by CI and published.
 | `linuxArm64` | vulkan, gl, null | built in CI (`ubuntu-24.04`) |
 | `mingwX64` | d3d12, vulkan, gl, null | built in CI (`ubuntu-24.04`) |
 | `windowsMsvcX64` | d3d12, vulkan, gl, null | built in CI (`windows-2022`) |
-| `androidNativeArm64` | vulkan, gles, null | built in CI; NDK pinned |
-| `androidNativeX64` | vulkan, gles, null | built in CI; NDK pinned |
+| `androidNativeArm64` | vulkan, gles, null | archive + install; K/N app run on emulator (`arm64-v8a`, static only) |
+| `androidNativeX64` | vulkan, gles, null | built in CI; NDK pinned (static only) |
 
 Dropped targets:
 
@@ -50,9 +50,10 @@ Dropped targets:
 | `tvosArm64` | no Rust target; wgpu-hal has no tvOS code |
 | `tvosSimulatorArm64` | no Rust target; wgpu-hal has no tvOS code |
 
-Note: the `androidNativeArm64` **archive** builds and publishes fine; it is
-the Kotlin/Native *consumer* that is blocked (libc++ incompatibility). That is
-a downstream concern, not a packer one.
+Note: the Android archives are consumed by Kotlin/Native fine — a K/N 2.4.10
+app linking `libwgpu_packer.a` builds, installs and renders on an emulator
+(see `docs/spikes/android.md`). Only the static linkage is supported and
+validated; the shared `.so` is not tested.
 
 ## Local build
 
