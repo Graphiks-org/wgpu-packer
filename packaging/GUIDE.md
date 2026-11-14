@@ -12,7 +12,10 @@ Chaque tag `v<WGPU_VERSION>.<PACKER_VERSION>` publie une release GitHub sur
 Vérifiez l'empreinte avant décompression :
 
 ```bash
+# GNU coreutils (Linux)
 sha256sum -c SHA256SUMS --ignore-missing
+# macOS
+shasum -a 256 -c SHA256SUMS
 ```
 
 Le `manifest.json` de l'archive porte `wgpu.crates` et `wgpu.nativeTag` :
