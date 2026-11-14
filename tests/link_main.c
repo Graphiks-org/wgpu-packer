@@ -1,5 +1,5 @@
-/* Test de lien statique + fumée (Review Focus #5) : linké par
- * build-target.sh sur la cible hôte avec les link_libs exacts de la matrice. */
+/* Static link + smoke test (Review Focus #5): linked by
+ * build-target.sh on the host target with the matrix's exact link_libs. */
 #include "webgpu.h"
 #include "wgpu.h"
 #include <stdio.h>
@@ -20,11 +20,11 @@ int main(void) {
     }
     size_t count = wgpuInstanceEnumerateAdapters(instance, NULL, NULL);
 
-    // Sonde GetProcAddress : résolution par nom (sensibilité à la casse du
-    // symbole, utile aux consommateurs dlopen).
+    // GetProcAddress probe: resolution by name (case sensitivity of the
+    // symbol, useful for dlopen consumers).
     WGPUProc create_proc = wgpuGetProcAddress(wgpu_string("wgpuCreateInstance"));
     if (create_proc == NULL) {
-        fprintf(stderr, "LINK_TEST: wgpuGetProcAddress ne résout pas wgpuCreateInstance\n");
+        fprintf(stderr, "LINK_TEST: wgpuGetProcAddress does not resolve wgpuCreateInstance\n");
         return 1;
     }
 

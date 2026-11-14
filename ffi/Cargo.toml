@@ -3,7 +3,7 @@ name = "wgpu-packer-ffi"
 version = "30.0.1"
 edition = "2021"
 rust-version = "1.93"
-description = "Couche C (webgpu.h + wgpu.h) au-dessus de wgpu, fondée sur wgpu-native"
+description = "C layer (webgpu.h + wgpu.h) on top of wgpu, built on wgpu-native"
 license = "MIT OR Apache-2.0"
 publish = false
 

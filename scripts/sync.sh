@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Rafraîchit les sources vendored selon wgpu-pin.env (spec §3).
-# Idempotent. --check : ne modifie rien, exit 1 si drift des pins.
+# Refreshes the vendored sources according to wgpu-pin.env (spec §3).
+# Idempotent. --check: changes nothing, exits 1 on pin drift.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=wgpu-pin.env
@@ -11,7 +11,7 @@ CHECK_ONLY=0
 
 if [[ ! -d third-party/wgpu-native ]]; then
   if [[ $CHECK_ONLY -eq 1 ]]; then
-    echo "sync: third-party absent — exécuter ./scripts/sync.sh sans --check" >&2
+    echo "sync: third-party missing — run ./scripts/sync.sh without --check" >&2
     exit 1
   fi
   git clone https://github.com/gfx-rs/wgpu-native third-party/wgpu-native
@@ -27,7 +27,7 @@ if [[ $CHECK_ONLY -eq 1 ]]; then
   if [[ "$(cat .pin-state 2>/dev/null)" == "$NEW_STATE" ]]; then
     exit 0
   fi
-  echo "sync: drift — .pin-state ne correspond pas à $WGPU_NATIVE_TAG" >&2
+  echo "sync: drift — .pin-state does not match $WGPU_NATIVE_TAG" >&2
   exit 1
 fi
 
@@ -37,4 +37,4 @@ cp third-party/wgpu-native/ffi/webgpu-headers/webgpu.h ffi/ffi/webgpu.h
 cp third-party/wgpu-native/ffi/wgpu.h ffi/ffi/wgpu_upstream.h
 cp third-party/wgpu-native/LICENSE.APACHE packaging/LICENSE-APACHE
 cp third-party/wgpu-native/LICENSE.MIT packaging/LICENSE-MIT
-echo "sync: pins à jour ($NEW_STATE)"
+echo "sync: pins up to date ($NEW_STATE)"

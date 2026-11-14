@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Audit header <-> symboles exportés (spec §4.5).
+"""Audit header <-> exported symbols (spec §4.5).
 
-Chaque fonction déclarée dans webgpu.h/wgpu.h doit être exportée par la
-bibliothèque (ou allowlistée dans tests/unimplemented.txt), et chaque symbole
-wgpu* exporté doit être déclaré. Exit 1 sur tout écart.
+Every function declared in webgpu.h/wgpu.h must be exported by the
+library (or allowlisted in tests/unimplemented.txt), and every exported
+wgpu* symbol must be declared. Exit 1 on any discrepancy.
 """
 import argparse
 import pathlib
@@ -13,7 +13,7 @@ import sys
 
 DECL = re.compile(r"^\s*(?:WGPU_EXPORT\s+)?[A-Za-z_][\w \t\*&]*?\b(wgpu[A-Z]\w*)\s*\(", re.M)
 
-# Toujours considérée exportée : sonde debug-only, absente des builds release.
+# Always considered exported: debug-only probe, absent from release builds.
 DEBUG_ONLY = {"wgpuDebugTriggerPanic"}
 
 
@@ -29,15 +29,15 @@ def parse_declarations(text: str) -> set[str]:
 
 
 def exported_symbols_missing(declared: set[str], exported: set[str], allow: set[str]) -> set[str]:
-    """Déclarées mais ni exportées ni allowlistées."""
+    """Declared but neither exported nor allowlisted."""
     return (declared - allow) - exported
 
 
 def ghost_symbols(declared: set[str], exported: set[str], allow: set[str]) -> set[str]:
-    """Symboles wgpu* exportés mais déclarés nulle part (hors allowlist).
+    """wgpu* symbols exported but declared nowhere (outside the allowlist).
 
-    Seuls les symboles non manglés préfixés wgpu comptent : les symboles
-    internes Rust (RNv…, ZN…) font partie de la std liée dans la statique.
+    Only non-mangled symbols prefixed with wgpu count: internal Rust
+    symbols (RNv…, ZN…) are part of the std linked into the static library.
     """
     api = {s for s in exported if s.startswith("wgpu")}
     return (api - declared) - allow
@@ -52,7 +52,7 @@ def read_allowlist(path: str) -> set[str]:
 
 
 def parse_dumpbin(raw: str) -> set[str]:
-    """Parse la sortie `dumpbin /exports` (dll MSVC)."""
+    """Parse the output of `dumpbin /exports` (MSVC dll)."""
     syms = set()
     for line in raw.splitlines():
         parts = line.split()
@@ -73,7 +73,7 @@ def nm_exported(lib: pathlib.Path) -> set[str]:
     for line in raw.splitlines():
         parts = line.split()
         if len(parts) >= 3 and parts[1] in ("T", "W"):
-            syms.add(parts[2].lstrip("_"))  # macOS : préfixe _
+            syms.add(parts[2].lstrip("_"))  # macOS: _ prefix
     return syms
 
 
@@ -96,11 +96,11 @@ def main() -> int:
     missing = sorted(exported_symbols_missing(declared, exported, allow))
     ghosts = sorted(ghost_symbols(declared, exported, allow))
     for n in missing:
-        print(f"MANQUANT  {n} : déclaré mais non exporté (ni allowlisté)")
+        print(f"MISSING   {n}: declared but not exported (nor allowlisted)")
     for n in ghosts:
-        print(f"FANTOME   {n} : exporté mais non déclaré dans les headers")
-    print(f"audit: {len(declared)} déclarées, {len(exported)} exportées, "
-          f"{len(missing)} manquantes, {len(ghosts)} fantômes")
+        print(f"GHOST     {n}: exported but not declared in the headers")
+    print(f"audit: {len(declared)} declared, {len(exported)} exported, "
+          f"{len(missing)} missing, {len(ghosts)} ghosts")
     return 1 if missing or ghosts else 0
 
 

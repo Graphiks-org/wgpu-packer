@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Usage : package.sh <kotlinTarget> <static|shared>
-# Produit dist/wgpu-<version>-<kotlinTarget>-<kind>.tar.gz + checksum (spec §6).
+# Usage: package.sh <kotlinTarget> <static|shared>
+# Produces dist/wgpu-<version>-<kotlinTarget>-<kind>.tar.gz + checksum (spec §6).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=wgpu-pin.env
@@ -9,7 +9,7 @@ source wgpu-pin.env
 NAME="$1"
 KIND="$2"
 TRIPLE="$(./scripts/build-target.sh --print-target "$NAME")" || {
-  echo "package: cible inconnue : $NAME" >&2
+  echo "package: unknown target: $NAME" >&2
   exit 2
 }
 VERSION="$WGPU_VERSION.$PACKER_VERSION"
@@ -43,7 +43,7 @@ case "$KIND:$TRIPLE" in
     [[ -f "target/$TRIPLE/release/libwgpu_packer.dll.a" ]] &&
       cp "target/$TRIPLE/release/libwgpu_packer.dll.a" "$STAGE/lib/" ;;
   *)
-    echo "package: combinaison inconnue : $KIND $TRIPLE" >&2
+    echo "package: unknown combination: $KIND $TRIPLE" >&2
     exit 2
     ;;
 esac
@@ -55,9 +55,9 @@ done
 
 mkdir -p dist
 ARCHIVE="dist/wgpu-$VERSION-$NAME-$KIND.tar.gz"
-# Le nom de l'archive ne porte que la version des crates : le manifest est le
-# seul endroit qui enregistre aussi le tag wgpu-native des headers vendorés.
-# Il est généré avant le tar pour entrer dans l'archive.
+# The archive name only carries the crates version: the manifest is the
+# only place that also records the wgpu-native tag of the vendored headers.
+# It is generated before the tar so it ends up inside the archive.
 python3 packaging/make-manifest.py \
   --install-dir "$STAGE" \
   --kotlin-target "$NAME" \

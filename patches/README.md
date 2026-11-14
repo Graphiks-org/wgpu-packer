@@ -1,6 +1,6 @@
 # patches/
 
-Patches à appliquer sur les sources wgpu/wgpu-native si un besoin le justifie
-(modèle dawn-packer, spec §3). Convention de nommage : `NNN-description.patch`,
-chaque patch accompagné d'une note datée ci-dessous (motif, version cible,
-retrait prévu). Rien à appliquer par défaut.
+Patches to apply to the wgpu/wgpu-native sources if a need justifies it
+(dawn-packer model, spec §3). Naming convention: `NNN-description.patch`,
+each patch accompanied by a dated note below (reason, target version,
+planned removal). Nothing to apply by default.

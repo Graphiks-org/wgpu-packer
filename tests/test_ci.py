@@ -11,7 +11,7 @@ except ImportError:
     yaml = None
 
 
-@unittest.skipIf(yaml is None, "pyyaml absent : pip install pyyaml")
+@unittest.skipIf(yaml is None, "pyyaml missing: pip install pyyaml")
 class CI(unittest.TestCase):
     def setUp(self):
         with open(".github/workflows/build.yml") as f:
@@ -36,18 +36,18 @@ class CI(unittest.TestCase):
         # cannot see them. The tag is read from workflow_run.head_branch.
         with open(".github/workflows/release.yml") as f:
             rel = yaml.safe_load(f)
-        # pyyaml parse la clé `on:` en booléen True (YAML 1.1)
+        # pyyaml parses the `on:` key as the boolean True (YAML 1.1)
         trigger = rel.get("on", rel.get(True))
         self.assertEqual(trigger["workflow_run"]["workflows"], ["build"])
         self.assertEqual(trigger["workflow_run"]["types"], ["completed"])
         guard = rel["jobs"]["release"]["if"]
         self.assertIn("conclusion == 'success'", guard)
-        # Sans ce test, un workflow_dispatch lancé sur une branche v... publierait.
+        # Without this test, a workflow_dispatch run on a v... branch would publish.
         self.assertIn("github.event.workflow_run.event == 'push'", guard)
         self.assertIn("startsWith(github.event.workflow_run.head_branch, 'v')", guard)
-        # Le téléchargement doit cibler le run déclencheur, et le checkout sa révision.
-        # On inspecte la structure parsée (str() d'un dict YAML utilise des quotes
-        # simples, donc `run-id: ...` n'y apparaîtrait jamais littéralement).
+        # The download must target the triggering run, and the checkout its revision.
+        # We inspect the parsed structure (str() of a YAML dict uses single
+        # quotes, so `run-id: ...` would never appear there literally).
         steps = rel["jobs"]["release"]["steps"]
         downloads = [s for s in steps if s.get("uses", "").startswith("actions/download-artifact")]
         self.assertEqual(len(downloads), 1)
@@ -62,14 +62,14 @@ class CI(unittest.TestCase):
     def test_kotlin_smoke_consumes_build_artifact(self):
         ks = self.wf["jobs"]["kotlin_smoke"]
         needs = ks["needs"]
-        needs = needs if isinstance(needs, list) else [needs]  # YAML : singleton = chaîne
+        needs = needs if isinstance(needs, list) else [needs]  # YAML: singleton = string
         self.assertEqual(needs, ["build"])
 
     def test_cross_link_test_in_build_job(self):
         runs = str(self.wf["jobs"]["build"]["steps"])
         self.assertIn("cross-link-test", runs)
         script = open("scripts/cross-link-test.sh").read()
-        self.assertIn("headers_compile.c", script)  # TU §4.5 embarquée
+        self.assertIn("headers_compile.c", script)  # embedded TU §4.5
         self.assertIn("link_main.c", script)
 
 

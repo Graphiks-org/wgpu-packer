@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# Usage :
-#   build-target.sh <nom-cible>           -> cargo build --release + audit checks.py
-#                                           (+ test de lien statique sur cible hôte)
-#   build-target.sh --print-target <nom>  -> affiche le triple rust
+# Usage:
+#   build-target.sh <target-name>         -> cargo build --release + checks.py audit
+#                                           (+ static link test on the host target)
+#   build-target.sh --print-target <name> -> prints the Rust triple
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=wgpu-pin.env
 source wgpu-pin.env
 
 if [[ "${1:-}" == "--print-target" ]]; then
-  # StopIteration (cible inconnue) est un échec attendu : pas de traceback.
+  # StopIteration (unknown target) is an expected failure: no traceback.
   python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$2')['triple'])" 2>/dev/null
   exit $?
 fi
 
 NAME="$1"
 TRIPLE="$(./scripts/build-target.sh --print-target "$NAME")" || {
-  echo "build-target: cible inconnue : $NAME (cf. targets/matrix.json)" >&2
+  echo "build-target: unknown target: $NAME (see targets/matrix.json)" >&2
   exit 2
 }
 
-# Environnement de déploiement Apple (ANDROID_API est consommé plus bas).
+# Apple deployment environment (ANDROID_API is consumed further down).
 eval "$(python3 - "$NAME" <<'EOF'
 import shlex, sys
 sys.path.insert(0, "tests")
@@ -32,10 +32,10 @@ for k, v in t.get("deployEnv", {}).items():
 EOF
 )"
 
-# Linker Android via NDK (génère .cargo/config.toml — indépendant de l'OS hôte).
+# Android linker via the NDK (generates .cargo/config.toml — independent of the host OS).
 case "$TRIPLE" in
   *-linux-android)
-    : "${NDK_HOME:?NDK_HOME requis pour $NAME}"
+    : "${NDK_HOME:?NDK_HOME required for $NAME}"
     PREBUILT="$(ls -d "$NDK_HOME"/toolchains/llvm/prebuilt/* | head -1)"
     API="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['deployEnv']['ANDROID_API'])")"
     mkdir -p .cargo
@@ -50,17 +50,17 @@ esac
 rustup target add "$TRIPLE" >/dev/null
 cargo build --locked --release -p wgpu-packer-ffi --target "$TRIPLE"
 
-# Audit de symboles (spec §4.5) sur la bibliothèque de cette cible.
+# Symbol audit (spec §4.5) on this target's library.
 case "$(uname -s)" in
   Darwin | Linux) LIB="target/$TRIPLE/release/libwgpu_packer.a" ;;
   MINGW*)         LIB="target/$TRIPLE/release/wgpu_packer.dll" ;;
 esac
 python3 tests/checks.py --lib "$LIB"
 
-# Test de lien statique sur cible hôte uniquement (Review Focus #5) :
-# link_main.c + libwgpu_packer.a + linkLibs exacts de la matrice.
-# (Le runner Windows n'a pas de `cc` : la voie msvc est couverte par
-# scripts/cross-link-test.sh dans la CI.)
+# Static link test on the host target only (Review Focus #5):
+# link_main.c + libwgpu_packer.a + the matrix's exact linkLibs.
+# (The Windows runner has no `cc`: the msvc path is covered by
+# scripts/cross-link-test.sh in CI.)
 HOST_TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
 if [[ "$TRIPLE" == "$HOST_TRIPLE" ]] && command -v cc >/dev/null; then
   LINK_LIBS="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['linkLibs'])")"

@@ -41,7 +41,7 @@ class Checks(unittest.TestCase):
         self.assertNotIn("wgpuSomeCommentedFn", decls)
 
     def test_missing_symbol_fails(self):
-        # Un header déclare wgpuTotoTruc ; une lib sans le symbole doit échouer.
+        # A header declares wgpuTotoTruc; a lib without the symbol must fail.
         with tempfile.TemporaryDirectory() as d:
             (open(os.path.join(d, "webgpu.h"), "w")
              .write("WGPU_EXPORT void wgpuTotoTruc(void);\n"))

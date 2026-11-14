@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Test structurel du pipeline (Task 7 du plan).
+# Structural test of the pipeline (plan Task 7).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
 for f in scripts/sync.sh scripts/build-target.sh scripts/package.sh; do
-  [[ -x "$f" ]] || fail "$f absent ou non exécutable"
+  [[ -x "$f" ]] || fail "$f missing or not executable"
 done
 
-# sync.sh --check doit réussir sur un état propre (pins cohérents)
-./scripts/sync.sh --check >/dev/null 2>&1 || fail "sync.sh --check doit réussir sur un état propre"
+# sync.sh --check must succeed on a clean state (consistent pins)
+./scripts/sync.sh --check >/dev/null 2>&1 || fail "sync.sh --check must succeed on a clean state"
 
-# build-target.sh rejette une cible inconnue
+# build-target.sh rejects an unknown target
 if ./scripts/build-target.sh cible-inexistante >/dev/null 2>&1; then
-  fail "cible inconnue acceptée"
+  fail "unknown target accepted"
 fi
 
-# Les 10 cibles v1 résolvent leur triple.
+# The 10 v1 targets resolve their triple.
 python3 - <<'EOF'
 import subprocess, sys
 sys.path.insert(0, "tests")
@@ -30,12 +30,12 @@ for t in v1:
     assert r.stdout.strip() == t["triple"], f"{t['kotlinTarget']}: {r.stdout.strip()}"
 EOF
 
-# package.sh rejette un kind inconnu
+# package.sh rejects an unknown kind
 if ./scripts/package.sh macosArm64 bidule >/dev/null 2>&1; then
-  fail "kind inconnu accepté"
+  fail "unknown kind accepted"
 fi
 
-# Pins wgpu exacts (contrainte globale du plan : =30.0.1, jamais caret)
-grep -q 'version = "=30.0.1"' Cargo.toml || fail "pins wgpu exacts (=30.0.1) attendus dans Cargo.toml"
+# Exact wgpu pins (global plan constraint: =30.0.1, never caret)
+grep -q 'version = "=30.0.1"' Cargo.toml || fail "exact wgpu pins (=30.0.1) expected in Cargo.toml"
 
 echo "PIPELINE_STRUCTURE_OK"
