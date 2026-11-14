@@ -37,7 +37,7 @@ class Matrix(unittest.TestCase):
 
     def test_runner_coverage(self):
         runners = {t["runner"] for t in matrix.load()["targets"]}
-        self.assertTrue(runners <= {"macos-14", "ubuntu-24.04", "windows-2022"})
+        self.assertTrue(runners <= {"macos-15", "ubuntu-24.04", "windows-2022"})
 
     def test_apple_have_deploy_env(self):
         for t in matrix.load()["targets"]:

@@ -15,7 +15,7 @@ defaults:
 
 jobs:
   oracle_macos:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -52,10 +52,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { target: macosArm64, runner: macos-14 }
-          - { target: macosX64, runner: macos-14 }
-          - { target: iosArm64, runner: macos-14 }
-          - { target: iosSimulatorArm64, runner: macos-14 }
+          - { target: macosArm64, runner: macos-15 }
+          - { target: macosX64, runner: macos-15 }
+          - { target: iosArm64, runner: macos-15 }
+          - { target: iosSimulatorArm64, runner: macos-15 }
           - { target: linuxX64, runner: ubuntu-24.04 }
           - { target: linuxArm64, runner: ubuntu-24.04 }
           - { target: windowsMsvcX64, runner: windows-2022 }
@@ -100,7 +100,7 @@ jobs:
 
   kotlin_smoke:
     needs: build
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4

@@ -6,12 +6,20 @@
       "triple": "aarch64-apple-darwin",
       "os": "macos",
       "arch": "arm64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework CoreVideo -framework IOKit -framework Foundation",
-      "deployEnv": { "MACOSX_DEPLOYMENT_TARGET": "10.13" },
+      "deployEnv": {
+        "MACOSX_DEPLOYMENT_TARGET": "10.13"
+      },
       "status": "v1"
     },
     {
@@ -19,12 +27,20 @@
       "triple": "x86_64-apple-darwin",
       "os": "macos",
       "arch": "x64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework CoreVideo -framework IOKit -framework Foundation",
-      "deployEnv": { "MACOSX_DEPLOYMENT_TARGET": "10.13" },
+      "deployEnv": {
+        "MACOSX_DEPLOYMENT_TARGET": "10.13"
+      },
       "status": "v1"
     },
     {
@@ -32,12 +48,19 @@
       "triple": "aarch64-apple-ios",
       "os": "ios",
       "arch": "arm64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
-      "deployEnv": { "IPHONEOS_DEPLOYMENT_TARGET": "13.0" },
+      "deployEnv": {
+        "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
+      },
       "status": "v1"
     },
     {
@@ -45,12 +68,19 @@
       "triple": "aarch64-apple-ios-sim",
       "os": "ios",
       "arch": "arm64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
-      "deployEnv": { "IPHONEOS_DEPLOYMENT_TARGET": "13.0" },
+      "deployEnv": {
+        "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
+      },
       "status": "v1"
     },
     {
@@ -60,8 +90,15 @@
       "arch": "x64",
       "runner": "ubuntu-24.04",
       "toolchain": "",
-      "backends": ["vulkan", "gl", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "-ldl -lpthread -lm",
       "deployEnv": {},
       "status": "v1"
@@ -73,8 +110,15 @@
       "arch": "arm64",
       "runner": "ubuntu-24.04",
       "toolchain": "",
-      "backends": ["vulkan", "gl", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "-ldl -lpthread -lm",
       "deployEnv": {},
       "status": "v1"
@@ -86,8 +130,16 @@
       "arch": "x64",
       "runner": "ubuntu-24.04",
       "toolchain": "",
-      "backends": ["d3d12", "vulkan", "gl", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "d3d12",
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "-luser32 -lgdi32 -ldxgi -ld3d12",
       "deployEnv": {},
       "status": "v1"
@@ -99,8 +151,16 @@
       "arch": "x64",
       "runner": "windows-2022",
       "toolchain": "",
-      "backends": ["d3d12", "vulkan", "gl", "null"],
-      "linkages": ["static", "shared"],
+      "backends": [
+        "d3d12",
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
       "linkLibs": "user32.lib gdi32.lib dxgi.lib d3d12.lib dxguid.lib",
       "deployEnv": {},
       "status": "v1"
@@ -112,10 +172,18 @@
       "arch": "arm64",
       "runner": "ubuntu-24.04",
       "toolchain": "",
-      "backends": ["vulkan", "gles", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "vulkan",
+        "gles",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-llog -landroid",
-      "deployEnv": { "ANDROID_API": "24" },
+      "deployEnv": {
+        "ANDROID_API": "24"
+      },
       "androidAbi": "arm64-v8a",
       "status": "v1"
     },
@@ -126,10 +194,18 @@
       "arch": "x64",
       "runner": "ubuntu-24.04",
       "toolchain": "",
-      "backends": ["vulkan", "gles", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "vulkan",
+        "gles",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-llog -landroid",
-      "deployEnv": { "ANDROID_API": "24" },
+      "deployEnv": {
+        "ANDROID_API": "24"
+      },
       "androidAbi": "x86_64",
       "status": "v1"
     },
@@ -138,12 +214,19 @@
       "triple": "aarch64-apple-tvos",
       "os": "tvos",
       "arch": "arm64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
-      "deployEnv": { "TVOS_DEPLOYMENT_TARGET": "13.0" },
+      "deployEnv": {
+        "TVOS_DEPLOYMENT_TARGET": "13.0"
+      },
       "status": "dropped"
     },
     {
@@ -151,12 +234,19 @@
       "triple": "aarch64-apple-tvos-simulator",
       "os": "tvos",
       "arch": "arm64",
-      "runner": "macos-14",
+      "runner": "macos-15",
       "toolchain": "",
-      "backends": ["metal", "null"],
-      "linkages": ["static"],
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
       "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
-      "deployEnv": { "TVOS_DEPLOYMENT_TARGET": "13.0" },
+      "deployEnv": {
+        "TVOS_DEPLOYMENT_TARGET": "13.0"
+      },
       "status": "dropped"
     }
   ]
