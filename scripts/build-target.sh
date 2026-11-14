@@ -9,15 +9,8 @@ cd "$(dirname "$0")/.."
 source wgpu-pin.env
 
 if [[ "${1:-}" == "--print-target" ]]; then
-  python3 - "$2" <<'EOF'
-import json, sys
-m = json.load(open("targets/matrix.json"))
-for t in m["targets"]:
-    if t["name"] == sys.argv[1]:
-        print(t["rust_target"])
-        sys.exit(0)
-sys.exit(1)
-EOF
+  # StopIteration (cible inconnue) est un échec attendu : pas de traceback.
+  python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$2')['triple'])" 2>/dev/null
   exit $?
 fi
 
@@ -29,10 +22,11 @@ TRIPLE="$(./scripts/build-target.sh --print-target "$NAME")" || {
 
 # Environnement de déploiement Apple (ANDROID_API est consommé plus bas).
 eval "$(python3 - "$NAME" <<'EOF'
-import json, shlex, sys
-m = json.load(open("targets/matrix.json"))
-t = next(t for t in m["targets"] if t["name"] == sys.argv[1])
-for k, v in t.get("deploy_env", {}).items():
+import shlex, sys
+sys.path.insert(0, "tests")
+import matrix
+t = matrix.by_kotlin_target(sys.argv[1])
+for k, v in t.get("deployEnv", {}).items():
     if k != "ANDROID_API":
         print(f"export {k}={shlex.quote(str(v))}")
 EOF
@@ -43,7 +37,7 @@ case "$TRIPLE" in
   *-linux-android)
     : "${NDK_HOME:?NDK_HOME requis pour $NAME}"
     PREBUILT="$(ls -d "$NDK_HOME"/toolchains/llvm/prebuilt/* | head -1)"
-    API="$(python3 -c "import json;m=json.load(open('targets/matrix.json'));t=next(t for t in m['targets'] if t['name']=='''$NAME''');print(t['deploy_env']['ANDROID_API'])")"
+    API="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['deployEnv']['ANDROID_API'])")"
     mkdir -p .cargo
     cat > .cargo/config.toml <<EOF
 [target.$TRIPLE]
@@ -64,12 +58,12 @@ esac
 python3 tests/checks.py --lib "$LIB"
 
 # Test de lien statique sur cible hôte uniquement (Review Focus #5) :
-# link_main.c + libwgpu_packer.a + link_libs exacts de la matrice.
+# link_main.c + libwgpu_packer.a + linkLibs exacts de la matrice.
 # (Le runner Windows n'a pas de `cc` : la voie msvc est couverte par
 # scripts/cross-link-test.sh dans la CI.)
 HOST_TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
 if [[ "$TRIPLE" == "$HOST_TRIPLE" ]] && command -v cc >/dev/null; then
-  LINK_LIBS="$(python3 -c "import json;m=json.load(open('targets/matrix.json'));t=next(t for t in m['targets'] if t['name']=='''$NAME''');print(t['link_libs'])")"
+  LINK_LIBS="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['linkLibs'])")"
   cc tests/link_main.c -Iffi/ffi "target/$TRIPLE/release/libwgpu_packer.a" $LINK_LIBS \
      -o /tmp/wgpu_packer_link_test
   /tmp/wgpu_packer_link_test

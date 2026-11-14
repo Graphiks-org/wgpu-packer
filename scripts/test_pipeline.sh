@@ -16,20 +16,22 @@ if ./scripts/build-target.sh cible-inexistante >/dev/null 2>&1; then
   fail "cible inconnue acceptée"
 fi
 
-# --print-target résout les 10 cibles de la matrice
+# Les 10 cibles v1 résolvent leur triple.
 python3 - <<'EOF'
 import subprocess, sys
 sys.path.insert(0, "tests")
 import matrix
-for t in matrix.load()["targets"]:
-    r = subprocess.run(["./scripts/build-target.sh", "--print-target", t["name"]],
+v1 = [t for t in matrix.load()["targets"] if t["status"] == "v1"]
+assert len(v1) == 10
+for t in v1:
+    r = subprocess.run(["./scripts/build-target.sh", "--print-target", t["kotlinTarget"]],
                        capture_output=True, text=True)
-    assert r.returncode == 0, t["name"]
-    assert r.stdout.strip() == t["rust_target"], f"{t['name']}: {r.stdout.strip()}"
+    assert r.returncode == 0, t["kotlinTarget"]
+    assert r.stdout.strip() == t["triple"], f"{t['kotlinTarget']}: {r.stdout.strip()}"
 EOF
 
 # package.sh rejette un kind inconnu
-if ./scripts/package.sh macos-arm64 bidule >/dev/null 2>&1; then
+if ./scripts/package.sh macosArm64 bidule >/dev/null 2>&1; then
   fail "kind inconnu accepté"
 fi
 

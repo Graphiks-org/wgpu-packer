@@ -20,7 +20,7 @@ class CI(unittest.TestCase):
     def test_matrix_covers_all_ten_targets(self):
         build = self.wf["jobs"]["build"]
         entries = {inc["target"] for inc in build["strategy"]["matrix"]["include"]}
-        expected = {t["name"] for t in matrix.load()["targets"]}
+        expected = {t["kotlinTarget"] for t in matrix.load()["targets"] if t["status"] == "v1"}
         self.assertEqual(entries, expected)
 
     def test_oracles_on_three_hosts_both_profiles(self):

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Usage : package.sh <nom-cible> <static|shared>
-# Produit dist/wgpu-<version>-<cible>-<kind>.tar.gz + checksum (spec §6).
+# Usage : package.sh <kotlinTarget> <static|shared>
+# Produit dist/wgpu-<version>-<kotlinTarget>-<kind>.tar.gz + checksum (spec §6).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=wgpu-pin.env
@@ -19,10 +19,10 @@ mkdir -p "$STAGE/include" "$STAGE/lib"
 
 cp ffi/ffi/webgpu.h ffi/ffi/wgpu.h ffi/ffi/wgpu_upstream.h "$STAGE/include/"
 python3 - "$NAME" > "$STAGE/lib/link.txt" <<'EOF'
-import json, sys
-m = json.load(open("targets/matrix.json"))
-t = next(t for t in m["targets"] if t["name"] == sys.argv[1])
-print(t["link_libs"])
+import sys
+sys.path.insert(0, "tests")
+import matrix
+print(matrix.by_kotlin_target(sys.argv[1])["linkLibs"])
 EOF
 
 case "$KIND:$TRIPLE" in
