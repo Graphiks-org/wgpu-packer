@@ -33,7 +33,7 @@ def unimplemented_functions() -> set[str]:
 
 def guide_documented() -> set[str]:
     guide = open(os.path.join(ROOT, "packaging/GUIDE.md")).read()
-    m = re.search(r"## [^\n]*[Nn]on implément[ée]*es?[^\n]*\n(.*?)(?=\n## |\Z)", guide, re.S)  # matches the French GUIDE heading
+    m = re.search(r"## [^\n]*[Uu]nimplemented functions[^\n]*\n(.*?)(?=\n## |\Z)", guide, re.S)  # matches the GUIDE heading
     if not m:
         return set()
     return set(re.findall(r"\b(wgpu\w+)\b", m.group(1)))
