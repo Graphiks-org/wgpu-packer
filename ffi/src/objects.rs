@@ -55,12 +55,12 @@ impl Drop for WGPUBindGroupLayoutImpl {
 pub(crate) struct BufferData {
     pub(crate) usage: native::WGPUBufferUsage,
     pub(crate) size: u64,
-    /// Queue du device créateur : timeline de la future de map async
-    /// (règle « Mixed Sources » des attentes temporisées).
+    /// Queue of the creating device: timeline of the async map future
+    /// ("Mixed Sources" rule of timed waits).
     pub(crate) queue: id::QueueId,
-    /// État de mapping suivi côté packer pour wgpuBufferGetMapState : wgpu-core
-    /// garde le sien dans un champ pub(crate) non accessible ici. Partagé par
-    /// Arc avec le callback de map (cf. wgpuBufferMapAsync), mis à jour dans
+    /// Mapping state tracked packer-side for wgpuBufferGetMapState: wgpu-core
+    /// keeps its own in a pub(crate) field not accessible here. Shared by
+    /// Arc with the map callback (cf. wgpuBufferMapAsync), updated in
     /// MapAsync / Unmap / Destroy.
     pub(crate) map_state: Arc<Mutex<native::WGPUBufferMapState>>,
 }
@@ -156,11 +156,11 @@ pub struct WGPUDeviceImpl {
     pub(crate) id: id::DeviceId,
     pub(crate) queue: Arc<QueueId>,
     pub(crate) error_sink: ErrorSink,
-    /// Future de perte (wgpuDeviceGetLostFuture) : créée paresseusement au
-    /// premier appel, id stable ensuite, complétée quand la perte remonte
-    /// via le sink d'erreurs.
+    /// Loss future (wgpuDeviceGetLostFuture): created lazily on the
+    /// first call, stable id afterwards, completed when the loss is reported
+    /// via the error sink.
     pub(crate) lost_future: Mutex<Option<u64>>,
-    /// Perte déjà remontée : un GetLostFuture tardif complète immédiatement.
+    /// Loss already reported: a late GetLostFuture completes immediately.
     pub(crate) device_lost: atomic::AtomicBool,
 }
 impl Drop for WGPUDeviceImpl {
@@ -171,10 +171,10 @@ impl Drop for WGPUDeviceImpl {
             // pre v27 this would wait for 60 seconds instead of waiting indefinitely
             match context.device_poll(self.id, wgt::PollType::wait_indefinitely()) {
                 Ok(_) => (),
-                // Plus d'abort à la destruction : l'erreur du drain final
-                // (perte du device) est livrée au sink. Le weak du sink ne
-                // peut plus upgrader (strong count déjà à 0 pendant drop) :
-                // pas de callback tiré sur un handle mourant.
+                // No more abort at destruction: the final drain error
+                // (device loss) is delivered to the sink. The sink's weak ref can no
+                // longer upgrade (strong count already 0 during drop):
+                // no callback fired on a dying handle.
                 Err(err) => handle_error(&self.error_sink, err, None, "WGPUDeviceImpl::drop"),
             }
 
@@ -185,14 +185,14 @@ impl Drop for WGPUDeviceImpl {
 
 pub struct WGPUInstanceImpl {
     pub(crate) context: Arc<Context>,
-    /// Feature TimedWaitAny demandée à la création : autorise
-    /// `wgpuInstanceWaitAny` avec `timeoutNS > 0` sur cette instance.
+    /// TimedWaitAny feature requested at creation: allows
+    /// `wgpuInstanceWaitAny` with `timeoutNS > 0` on this instance.
     pub(crate) timed_wait_any: bool,
 }
 impl Drop for WGPUInstanceImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
-            // Annulation silencieuse des callbacks non livrés de l'instance.
+            // Silent cancellation of the instance's undelivered callbacks.
             crate::future::purge(&self.context);
         }
     }
@@ -250,9 +250,9 @@ impl Drop for WGPURenderBundleImpl {
 pub struct WGPURenderBundleEncoderImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) encoder: *mut Option<*mut wgc::command::RenderBundleEncoder>,
-    /// Sink du device capturé à la création : la validation de contenu du
-    /// bundle est une erreur de record-time livrée au finish (même routage
-    /// que les encodeurs de passe) — jamais fatale.
+    /// Device sink captured at creation: content validation of the
+    /// bundle is a record-time error delivered at finish (same routing
+    /// as the pass encoders) — never fatal.
     pub(crate) error_sink: ErrorSink,
 }
 impl Drop for WGPURenderBundleEncoderImpl {
@@ -273,13 +273,13 @@ pub struct WGPURenderPassEncoderImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) encoder: *mut RenderPass,
     pub(crate) error_sink: ErrorSink,
-    /// `maxDrawCount` (chaîne `WGPURenderPassMaxDrawCount`): plafond de draw
-    /// calls de la passe, comptés côté packer — wgpu-core 30 n'a plus ce champ
-    /// (la spec WebGPU l'a retiré), le contrat C le porte. Défaut
-    /// `WGPU_RENDER_PASS_MAX_DRAW_COUNT_INIT` (50 000 000) quand la chaîne
-    /// est absente ; 0 (descripteur zéro) compte comme ce défaut.
+    /// `maxDrawCount` (`WGPURenderPassMaxDrawCount` chain): draw call cap
+    /// of the pass, counted packer-side — wgpu-core 30 no longer has this field
+    /// (the WebGPU spec removed it), the C contract carries it. Default
+    /// `WGPU_RENDER_PASS_MAX_DRAW_COUNT_INIT` (50 000 000) when the chain
+    /// is absent; 0 (zeroed descriptor) counts as this default.
     pub(crate) max_draw_count: u64,
-    /// Nombre de draw calls déjà encodés dans cette passe.
+    /// Number of draw calls already encoded in this pass.
     pub(crate) draw_count: atomic::AtomicU64,
 }
 impl Drop for WGPURenderPassEncoderImpl {
@@ -363,9 +363,9 @@ pub(crate) struct TextureData {
     pub(crate) format: native::WGPUTextureFormat,
     pub(crate) mip_level_count: u32,
     pub(crate) sample_count: u32,
-    /// Dimension résolue des vues de binding (webgpu.h
-    /// WGPUTextureBindingViewDimension chaîné) : wgc 29 n'a pas ce concept
-    /// (gfx-rs/wgpu#7428), la résolution est faite côté packer à la création.
+    /// Resolved dimension of the binding views (chained webgpu.h
+    /// WGPUTextureBindingViewDimension): wgc 29 does not have this concept
+    /// (gfx-rs/wgpu#7428), the resolution is done packer-side at creation.
     pub(crate) texture_binding_view_dimension: native::WGPUTextureViewDimension,
 }
 

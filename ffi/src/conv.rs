@@ -1188,11 +1188,11 @@ pub fn write_global_report(
     native_report.hub = map_hub_report(&report.hub);
 }
 
-/// Résout la dimension des vues de binding d'une texture (webgpu.h
-/// WGPUTextureBindingViewDimension) : valeur explicite si chaînée et définie,
-/// sinon dérivation du type de dimension (1D / 3D / multisample -> 2D ;
-/// 2D -> 2DArray au-delà d'une couche). wgc 29 n'a pas ce concept
-/// (gfx-rs/wgpu#7428) — résolu côté packer, partagé par device et surface.
+/// Resolves the binding view dimension of a texture (webgpu.h
+/// WGPUTextureBindingViewDimension): explicit value if chained and defined,
+/// otherwise derived from the dimension type (1D / 3D / multisample -> 2D;
+/// 2D -> 2DArray beyond one layer). wgc 29 does not have this concept
+/// (gfx-rs/wgpu#7428) — resolved packer-side, shared by device and surface.
 pub fn resolve_texture_binding_view_dimension(
     dimension: native::WGPUTextureDimension,
     sample_count: u32,
@@ -1221,9 +1221,9 @@ pub fn resolve_texture_binding_view_dimension(
     }
 }
 
-/// Écrit un `wgt::AdapterInfo` dans la struct C. Les chaînes sont possédées par
-/// le consommateur, à libérer avec `wgpuAdapterInfoFreeMembers` (partagé par
-/// wgpuAdapterGetInfo et wgpuDeviceGetAdapterInfo).
+/// Writes a `wgt::AdapterInfo` into the C struct. The strings are owned by
+/// the consumer, to be freed with `wgpuAdapterInfoFreeMembers` (shared by
+/// wgpuAdapterGetInfo and wgpuDeviceGetAdapterInfo).
 pub fn write_adapter_info(out: &mut native::WGPUAdapterInfo, info: &wgt::AdapterInfo) {
     out.vendor = str_into_owned_string_view(&info.driver);
     out.architecture = crate::callbacks::EMPTY_STRING; // TODO(webgpu.h)
@@ -1252,13 +1252,13 @@ pub fn map_features(features: &[native::WGPUFeatureName]) -> wgt::Features {
 pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureName> {
     let mut temp = Vec::new();
 
-    // webgpu.h 30 : un adaptateur conforme au niveau Core expose toujours
-    // `CoreFeaturesAndLimits` (WGPUFeatureName_CoreFeaturesAndLimits). Ce
-    // packer n'expose que des adaptateurs Core — la requête d'adaptateur
-    // Compatibility est ignorée côté wgc (aucun mode compat compilé), donc
-    // chaque adaptateur et chaque device liste cette feature. Le sens inverse
-    // (map_features) l'accepte comme no-op : wgt n'a pas de bit associé, la
-    // feature est toujours active.
+    // webgpu.h 30: an adapter compliant with the Core level always exposes
+    // `CoreFeaturesAndLimits` (WGPUFeatureName_CoreFeaturesAndLimits). This
+    // packer only exposes Core adapters — the Compatibility adapter
+    // request is ignored on the wgc side (no compat mode compiled), so
+    // every adapter and every device lists this feature. The reverse direction
+    // (map_features) accepts it as a no-op: wgt has no associated bit, the
+    // feature is always active.
     temp.push(native::WGPUFeatureName_CoreFeaturesAndLimits);
 
     if features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
@@ -1730,7 +1730,7 @@ pub fn map_bind_group_layout_entry(
                 ),
             },
             view_dimension: match entry.texture.viewDimension {
-                // webgpu.h : Undefined « defaults to 2D » (macro INIT).
+                // webgpu.h: Undefined "defaults to 2D" (INIT macro).
                 native::WGPUTextureViewDimension_Undefined
                 | native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
                 native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
@@ -1768,7 +1768,7 @@ pub fn map_bind_group_layout_entry(
             format: map_texture_format(entry.storageTexture.format)
                 .expect("invalid texture format for storage texture binding layout"),
             view_dimension: match entry.storageTexture.viewDimension {
-                // webgpu.h : Undefined « defaults to 2D » (macro INIT).
+                // webgpu.h: Undefined "defaults to 2D" (INIT macro).
                 native::WGPUTextureViewDimension_Undefined
                 | native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
                 native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
@@ -1947,8 +1947,8 @@ pub unsafe fn map_surface(
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
-        // Les macros INIT du header posent ces champs à NULL : une entrée
-        // invalide doit panic (convention packer), pas provoquer d'UB via
+        // The INIT macros of the header set these fields to NULL: an invalid
+        // entry must panic (packer convention), not cause UB through
         // NonZero::new_unchecked.
         let mut window_handle = raw_window_handle::Win32WindowHandle::new(
             NonZeroIsize::new(win.hwnd as _).expect("invalid null hwnd for surface source WindowsHWND"),
@@ -2036,8 +2036,8 @@ pub fn map_surface_configuration(
         usage: map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
         format: map_texture_format(config.format)
             .expect("invalid format for surface configuration"),
-        // La chaîne C WGPUSurfaceColorManagement (webgpu.h 29) n'est pas relayée
-        // pour l'instant : défaut wgpu 30, supporté par tous les formats.
+        // The C chain WGPUSurfaceColorManagement (webgpu.h 29) is not relayed
+        // for now: wgpu 30 default, supported by all formats.
         color_space: wgt::SurfaceColorSpace::Auto,
         width: config.width,
         height: config.height,
@@ -2133,7 +2133,7 @@ pub fn map_shader_runtime_checks(
         mesh_shader_primitive_indices_clamp: (value
             & native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
             != 0,
-        // Pas de bit C pour ce contrôle (wgpu 30) — activé par défaut.
+        // No C bit for this check (wgpu 30) — enabled by default.
         int_div_checks: true,
     }
 }
@@ -2162,8 +2162,8 @@ mod tests {
 
     #[test]
     fn texture_usage_flags_roundtrip() {
-        // Audit n°1 et n°2 : COPY_DST était relayé comme CopySrc côté C, et
-        // STORAGE_BINDING/TRANSIENT_ATTACHMENT étaient jetés côté Rust.
+        // Audit no. 1 and no. 2: COPY_DST was relayed as CopySrc on the C side, and
+        // STORAGE_BINDING/TRANSIENT_ATTACHMENT were dropped on the Rust side.
         let flags = native::WGPUTextureUsage_CopyDst
             | native::WGPUTextureUsage_StorageBinding
             | native::WGPUTextureUsage_TransientAttachment;
@@ -2177,8 +2177,8 @@ mod tests {
 
     #[test]
     fn vertex_format_bgra_is_mapped() {
-        // Audit n°5 : WGPUVertexFormat_Unorm8x4BGRA (valide, supporté par
-        // wgt 30) manquait au mapping.
+        // Audit no. 5: WGPUVertexFormat_Unorm8x4BGRA (valid, supported by
+        // wgt 30) was missing from the mapping.
         assert_eq!(
             map_vertex_format(native::WGPUVertexFormat_Unorm8x4BGRA),
             Ok(wgt::VertexFormat::Unorm8x4Bgra)
@@ -2187,8 +2187,8 @@ mod tests {
 
     #[test]
     fn instance_extras_memory_budgets_are_distinct() {
-        // Audit n°3 : budgetForDeviceLoss était lu depuis
-        // budgetForDeviceCreation (copié-collé).
+        // Audit no. 3: budgetForDeviceLoss was read from
+        // budgetForDeviceCreation (copy-paste).
         let mut extras: native::WGPUInstanceExtras = unsafe { std::mem::zeroed() };
         let creation: u8 = 5;
         let loss: u8 = 90;
@@ -2202,8 +2202,8 @@ mod tests {
 
     #[test]
     fn bind_group_layout_view_dimension_undefined_defaults_2d() {
-        // Audit n°4 : viewDimension Undefined « defaults to 2D » (webgpu.h,
-        // macros INIT) — texture ET storage texture.
+        // Audit no. 4: viewDimension Undefined "defaults to 2D" (webgpu.h,
+        // INIT macros) — texture AND storage texture.
         let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
         entry.binding = 0;
         entry.texture.sampleType = native::WGPUTextureSampleType_Float;
@@ -2228,8 +2228,8 @@ mod tests {
 
     #[test]
     fn bind_group_layout_binding_array_size_standard_field() {
-        // Audit n°7 : le champ standard bindingArraySize était ignoré (seul
-        // l'extras legacy WGPUBindGroupLayoutEntryExtras.count était lu).
+        // Audit no. 7: the standard bindingArraySize field was ignored (only
+        // the legacy extras WGPUBindGroupLayoutEntryExtras.count was read).
         let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
         entry.binding = 0;
         entry.buffer.type_ = native::WGPUBufferBindingType_Uniform;

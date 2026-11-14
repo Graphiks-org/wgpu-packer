@@ -1,7 +1,7 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
-/// Exécute `f` en contenant toute panique. Retourne `None` si une panique a été
-/// interceptée — aucune panique Rust ne franchit l'ABI C.
+/// Runs `f` while containing any panic. Returns `None` if a panic was
+/// caught — no Rust panic crosses the C ABI.
 pub fn catch_unwind_contained<T>(name: &str, f: impl FnOnce() -> T) -> Option<T> {
     catch_unwind(AssertUnwindSafe(f))
         .map_err(|payload| {
@@ -15,13 +15,13 @@ pub fn catch_unwind_contained<T>(name: &str, f: impl FnOnce() -> T) -> Option<T>
         .ok()
 }
 
-/// Sonde de test : panique volontairement contenue par le wrapper FFI.
-/// Debug uniquement. Retourne 1 si la panique a été contenue, 0 sinon.
+/// Test probe: panic deliberately contained by the FFI wrapper.
+/// Debug only. Returns 1 if the panic was contained, 0 otherwise.
 #[cfg(debug_assertions)]
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDebugTriggerPanic() -> u32 {
     match catch_unwind_contained("wgpuDebugTriggerPanic", || panic!("sonde orchestree par l'oracle")) {
-        Some(_) => 0, // pas de panique : la sonde est cassée
-        None => 1,    // panique bien contenue
+        Some(_) => 0, // no panic: the probe is broken
+        None => 1,    // panic properly contained
     }
 }

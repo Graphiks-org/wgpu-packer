@@ -14,11 +14,11 @@ use crate::error::*;
 use crate::native;
 use crate::objects::*;
 
-/// Compte un draw call de la passe contre son `maxDrawCount` (contrat C) et
-/// livre l'erreur de validation WebGPU quand le plafond est dépassé —
-/// wgpu-core 30 n'a plus ce champ, le packer porte la sémantique : chaque
-/// `draw*` au-delà du plafond est refusé (l'encodage continue, comme une
-/// validation d'encodage wgc) et l'erreur rejoint le scope d'erreur courant.
+/// Counts a draw call of the pass against its `maxDrawCount` (C contract) and
+/// delivers the WebGPU validation error when the cap is exceeded —
+/// wgpu-core 30 no longer has this field, the packer carries the semantics: each
+/// `draw*` beyond the cap is rejected (encoding continues, like a wgc
+/// encoding validation) and the error joins the current error scope.
 fn check_draw_count(pass: &WGPURenderPassEncoderImpl, operation: &'static str) {
     let drawn = pass.draw_count.fetch_add(1, Ordering::SeqCst) + 1;
     if drawn > pass.max_draw_count {
@@ -34,7 +34,7 @@ fn check_draw_count(pass: &WGPURenderPassEncoderImpl, operation: &'static str) {
     }
 }
 
-/// Le dépassement de `maxDrawCount` d'une render pass (contrat C webgpu.h).
+/// Exceeding the `maxDrawCount` of a render pass (webgpu.h C contract).
 #[derive(Debug)]
 struct MaxDrawCountExceeded {
     drawn: u64,
@@ -172,12 +172,12 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
 
     let (render_bundle_id, error) = context.render_bundle_encoder_finish(&mut *encoder, &desc, None);
     if let Some(cause) = error {
-        // Sémantique WebGPU : la validation de contenu d'un render bundle est
-        // une erreur de record-time, livrée au sink (scope d'erreur courant ou
-        // uncaptured error handler) — jamais fatale. wgc assigne un id
-        // `Fallible::Invalid` : finish rend un handle valide au contenu
-        // invalide, et une exécution ultérieure (executeBundles) signalera
-        // l'erreur normalement.
+        // WebGPU semantics: content validation of a render bundle is
+        // a record-time error, delivered to the sink (current error scope or
+        // uncaptured error handler) — never fatal. wgc assigns an id
+        // `Fallible::Invalid`: finish returns a valid handle for invalid
+        // content, and a later execution (executeBundles) will report
+        // the error normally.
         handle_error(
             &bundle.error_sink,
             cause,

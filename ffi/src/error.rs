@@ -67,8 +67,8 @@ pub(crate) struct ErrorSinkRaw {
     pub(crate) scopes: Vec<ErrorScope>,
     pub(crate) uncaptured_handler: UncapturedErrorCallback,
     pub(crate) device_lost_handler: DeviceLostCallback,
-    /// Mode du deviceLostCallbackInfo : gouverne la livraison du callback et
-    /// la complétion de la lost future (wgpuDeviceGetLostFuture).
+    /// Mode of the deviceLostCallbackInfo: governs the delivery of the callback and
+    /// the completion of the lost future (wgpuDeviceGetLostFuture).
     pub(crate) device_lost_mode: native::WGPUCallbackMode,
     pub(crate) device: Weak<WGPUDeviceImpl>,
 }
@@ -91,17 +91,17 @@ impl ErrorSinkRaw {
     fn handle_error(&mut self, err: crate::Error) {
         let (typ, filter) = match err {
             crate::Error::DeviceLost { .. } => {
-                // La perte n'est livrée qu'UNE fois : la première remontée crée
-                // la lost future si wgpuDeviceGetLostFuture n'a pas encore été
-                // appelé, puis la complète — la livraison (immédiate ou différée)
-                // suit le mode du deviceLostCallbackInfo. Les remontées
-                // ultérieures sont ignorées (toute opération post-perte échoue
-                // avec DeviceError::Lost).
+                // Loss is delivered only ONCE: the first report creates
+                // the lost future if wgpuDeviceGetLostFuture has not been called
+                // yet, then completes it — delivery (immediate or deferred)
+                // follows the mode of the deviceLostCallbackInfo. Subsequent
+                // reports are ignored (any post-loss operation fails
+                // with DeviceError::Lost).
                 let message = err.to_string();
                 if let Some(device) = self.device.upgrade() {
                     if !device.device_lost.swap(true, atomic::Ordering::SeqCst) {
-                        // Ordre des verrous : sink (tenu par l'appelant) puis
-                        // lost_future — jamais l'inverse.
+                        // Lock order: sink (held by the caller) then
+                        // lost_future — never the reverse.
                         let future_id = {
                             let mut lost = device.lost_future.lock();
                             match *lost {
@@ -125,9 +125,9 @@ impl ErrorSinkRaw {
                         crate::future::complete(future_id, payload);
                     }
                 }
-                // Device déjà détruit (upgrade échoué) : plus d'objet à
-                // notifier — on ne tire jamais le callback sur un handle
-                // dangling.
+                // Device already destroyed (upgrade failed): no object left to
+                // notify — the callback is never fired on a dangling
+                // handle.
                 return;
             }
             crate::Error::OutOfMemory { .. } => (
@@ -244,11 +244,11 @@ pub(crate) fn handle_error(
     });
 }
 
-/// Erreurs des créations de pipelines async : retourne le statut du callback
-/// (webgpu.h WGPUCreatePipelineAsyncStatus) et le message. Les erreurs device
-/// (lost/OOM) restent routées vers les handlers du device (GUIDE §5) avec un
-/// statut InternalError ; les erreurs de validation ne sont livrées QU'AU
-/// callback (webgpu.h CallbackStatuses) avec un statut ValidationError.
+/// Async pipeline creation errors: returns the callback status
+/// (webgpu.h WGPUCreatePipelineAsyncStatus) and the message. Device errors
+/// (lost/OOM) stay routed to the device handlers (GUIDE §5) with an
+/// InternalError status; validation errors are delivered ONLY TO THE
+/// callback (webgpu.h CallbackStatuses) with a ValidationError status.
 pub(crate) fn route_async_pipeline_error(
     sink_mutex: &Mutex<ErrorSinkRaw>,
     source: impl error::Error + Send + Sync + 'static,
@@ -285,7 +285,7 @@ pub(crate) fn route_async_pipeline_error(
         source_opt = source.source();
     }
 
-    // Erreur de validation : livrée au callback uniquement.
+    // Validation error: delivered to the callback only.
     let message = format_error(&error);
     (
         native::WGPUCreatePipelineAsyncStatus_ValidationError,
@@ -293,11 +293,11 @@ pub(crate) fn route_async_pipeline_error(
     )
 }
 
-/// Payload « device lost » : tire le deviceLostCallbackInfo (raison
-/// `Destroyed` — wgc 29 n'expose pas la cause réelle de la perte). Le handle
-/// est possédé par le payload (`OwnedHandle`) : la référence vit jusqu'à la
-/// livraison (ou l'annulation à la destruction de l'instance), jamais de
-/// pointeur dangling en livraison différée.
+/// "device lost" payload: fires the deviceLostCallbackInfo (reason
+/// `Destroyed` — wgc 29 does not expose the real cause of the loss). The handle
+/// is owned by the payload (`OwnedHandle`): the reference lives until
+/// delivery (or cancellation at instance destruction), never a
+/// dangling pointer on deferred delivery.
 pub(crate) fn lost_callback_payload(
     handler: &DeviceLostCallback,
     device: Arc<WGPUDeviceImpl>,

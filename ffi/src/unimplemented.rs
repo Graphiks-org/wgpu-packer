@@ -1,16 +1,16 @@
-//! Stubs volontairement non implémentés : chaque appel lève `unimplemented!()`
-//! (abort côté consommateur, GUIDE §6). Raisons, vérifiées dans les sources
-//! de wgpu-core/wgpu-types/naga 29 :
+//! Deliberately unimplemented stubs: every call raises `unimplemented!()`
+//! (abort on the consumer side, GUIDE §6). Reasons, verified in the sources
+//! of wgpu-core/wgpu-types/naga 29:
 //!
 //! - `wgpuInstanceGetWGSLLanguageFeatures` / `wgpuInstanceHasWGSLLanguageFeature`
-//!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers` : aucune API wgt/naga 29
-//!   listant les features de langage WGSL supportées.
-//! - `wgpuShaderModuleGetCompilationInfo` : wgc 29 ne conserve pas les
-//!   messages de compilation des shader modules (absent aussi de 29.0.3).
-//! - `wgpuExternalTextureAddRef` / `wgpuExternalTextureRelease` : type
-//!   incréable via l'ABI — webgpu.h : "Creation of WGPUExternalTexture is
+//!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgt/naga 29 API
+//!   listing the supported WGSL language features.
+//! - `wgpuShaderModuleGetCompilationInfo`: wgc 29 does not keep the
+//!   compilation messages of shader modules (also absent from 29.0.3).
+//! - `wgpuExternalTextureAddRef` / `wgpuExternalTextureRelease`: type
+//!   that cannot be ref-counted through the ABI — webgpu.h: "Creation of WGPUExternalTexture is
 //!   extremely implementation-dependent and not defined in this header"
-//!   (voie vidéo différée, spec §5).
+//!   (deferred video path, spec §5).
 
 use crate::native;
 

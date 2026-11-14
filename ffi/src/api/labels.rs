@@ -1,9 +1,9 @@
-//! SetLabel : le hint de label est accepté et ignoré.
+//! SetLabel: the label hint is accepted and ignored.
 //!
-//! wgpu-core 29 n'expose aucun changement de label post-création (aucun
-//! `*_set_label` sur `Global`) : les labels des messages d'erreur restent
-//! ceux passés à la création. Un no-op explicite vaut mieux qu'un abort pour
-//! un hint purement informatif — l'ABI reste sûre pour les consommateurs.
+//! wgpu-core 29 exposes no post-creation label change (no
+//! `*_set_label` on `Global`): the labels of error messages remain
+//! the ones passed at creation. An explicit no-op is better than an abort for
+//! a purely informational hint — the ABI stays safe for consumers.
 
 use crate::native;
 

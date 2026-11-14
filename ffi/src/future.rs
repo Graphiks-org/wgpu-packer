@@ -1,20 +1,20 @@
-//! Registre de futures côté packer — webgpu.h « Asynchronous-Operations ».
+//! Packer-side future registry — webgpu.h "Asynchronous-Operations".
 //!
-//! wgpu-core 29 n'expose aucune infrastructure de futures : chaque point
-//! d'entrée async enregistre une future ici et la complète quand wgc résout
-//! l'opération. La livraison du callback suit le `WGPUCallbackMode` choisi par
-//! le consommateur :
-//! - `AllowSpontaneous` : tirée dès la complétion (pendant le poll qui la
-//!   découvre, ou avant le retour pour les opérations synchrones) ;
-//! - `AllowProcessEvents` : payload gardé, callback livré au prochain
-//!   `wgpuInstanceProcessEvents` (ou `wgpuInstanceWaitAny`) ;
-//! - `WaitAnyOnly` : callback livré uniquement par un `wgpuInstanceWaitAny`
-//!   couvrant la future.
+//! wgpu-core 29 exposes no future infrastructure: every async entry
+//! point registers a future here and completes it when wgc resolves
+//! the operation. Callback delivery follows the `WGPUCallbackMode` chosen by
+//! the consumer:
+//! - `AllowSpontaneous`: fired as soon as it completes (during the poll that
+//!   discovers it, or before the return for synchronous operations);
+//! - `AllowProcessEvents`: payload kept, callback delivered at the next
+//!   `wgpuInstanceProcessEvents` (or `wgpuInstanceWaitAny`);
+//! - `WaitAnyOnly`: callback delivered only by a `wgpuInstanceWaitAny`
+//!   covering the future.
 //!
-//! L'appartenance d'une future à son instance est le pointeur de l'`Arc<Context>`
-//! partagé par tous les objets d'une même instance : aucune plomberie entre
-//! objets n'est nécessaire, et `wgpuInstanceWaitAny` rejette les futures d'une
-//! autre instance.
+//! A future's membership in its instance is the pointer of the `Arc<Context>`
+//! shared by all objects of the same instance: no plumbing between
+//! objects is needed, and `wgpuInstanceWaitAny` rejects futures of another
+//! instance.
 
 use std::{
     cell::RefCell,
@@ -31,17 +31,17 @@ use wgc::id as id;
 use crate::native;
 use crate::objects::Context;
 
-/// Callback C prêt à être tiré, avec tout ce qu'il capture (message, handles).
+/// C callback ready to be fired, with everything it captures (message, handles).
 pub(crate) type Payload = Box<dyn FnOnce() + Send>;
 
-/// Timeline d'origine d'une opération. Une attente temporisée ne peut pas
-/// mélanger plusieurs queues (webgpu.h « Mixed Sources »).
+/// Origin timeline of an operation. A timed wait cannot
+/// mix several queues (webgpu.h "Mixed Sources").
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Source {
-    /// Opération CPU (pipelines async, popErrorScope, perte de device,
-    /// requestAdapter/requestDevice) : complète sans dépendre d'une queue.
+    /// CPU operation (async pipelines, popErrorScope, device loss,
+    /// requestAdapter/requestDevice): completes without depending on a queue.
     Cpu,
-    /// Opération liée à la timeline d'une queue (map async, work done).
+    /// Operation tied to the timeline of a queue (map async, work done).
     Queue(id::QueueId),
 }
 
@@ -51,7 +51,7 @@ enum FutureState {
 }
 
 struct FutureEntry {
-    /// `Arc::as_ptr(context)` de l'instance propriétaire.
+    /// `Arc::as_ptr(context)` of the owning instance.
     owner: usize,
     mode: native::WGPUCallbackMode,
     source: Source,
@@ -64,15 +64,15 @@ fn registry() -> &'static Mutex<HashMap<u64, FutureEntry>> {
 }
 
 fn next_id() -> u64 {
-    // 0 reste la sentinelle « null » (WGPU_FUTURE_INIT), jamais attribuée.
+    // 0 remains the "null" sentinel (WGPU_FUTURE_INIT), never assigned.
     static NEXT_ID: AtomicU64 = AtomicU64::new(1);
     NEXT_ID.fetch_add(1, Ordering::Relaxed)
 }
 
 thread_local! {
-    /// Ids complétés pendant le poll interne d'un `wgpuInstanceWaitAny` sur ce
-    /// thread : les futures AllowSpontaneous y sont tirées immédiatement ; le
-    /// scope permet à la boucle d'attente de poser leur flag `completed`.
+    /// Ids completed during the internal poll of a `wgpuInstanceWaitAny` on this
+    /// thread: the AllowSpontaneous futures are fired there immediately; the
+    /// scope lets the wait loop set their `completed` flag.
     static WAIT_SCOPE: RefCell<Option<Vec<u64>>> = const { RefCell::new(None) };
 }
 
@@ -84,8 +84,8 @@ fn notify_wait_scope(future_id: u64) {
     });
 }
 
-/// Exécute `poll` avec un scope d'attente actif sur ce thread et retourne les
-/// ids de futures AllowSpontaneous complétées (déjà tirées) pendant ce poll.
+/// Runs `poll` with a wait scope active on this thread and returns the
+/// ids of AllowSpontaneous futures completed (already fired) during this poll.
 pub(crate) fn run_in_wait_scope<R>(poll: impl FnOnce() -> R) -> (R, Vec<u64>) {
     WAIT_SCOPE.with(|scope| {
         let outer = scope.borrow_mut().replace(Vec::new());
@@ -100,8 +100,8 @@ pub(crate) fn owner_of(context: &Arc<Context>) -> usize {
     Arc::as_ptr(context) as usize
 }
 
-/// webgpu.h : le mode d'un CallbackInfo « Has no default » — 0 (posé par le
-/// macro INIT) ou toute valeur hors 1/2/3 est un bug consommateur.
+/// webgpu.h: the mode of a CallbackInfo "Has no default" — 0 (set by the
+/// INIT macro) or any value outside 1/2/3 is a consumer bug.
 pub(crate) fn validate_callback_mode(mode: native::WGPUCallbackMode) {
     match mode {
         native::WGPUCallbackMode_WaitAnyOnly
@@ -111,7 +111,7 @@ pub(crate) fn validate_callback_mode(mode: native::WGPUCallbackMode) {
     }
 }
 
-/// Enregistre une future en attente et retourne son id (jamais 0).
+/// Registers a pending future and returns its id (never 0).
 pub(crate) fn register(
     context: &Arc<Context>,
     mode: native::WGPUCallbackMode,
@@ -130,14 +130,14 @@ pub(crate) fn register(
     future_id
 }
 
-/// Complète une future. `AllowSpontaneous` : payload tiré immédiatement (« as
-/// soon as possible ») et future consommée. Autres modes : payload gardé pour
+/// Completes a future. `AllowSpontaneous`: payload fired immediately ("as
+/// soon as possible") and future consumed. Other modes: payload kept for
 /// `wgpuInstanceProcessEvents` / `wgpuInstanceWaitAny`.
 pub(crate) fn complete(future_id: u64, payload: Payload) {
     let to_fire: Option<Payload> = {
         let mut map = registry().lock();
         let is_spontaneous = match map.get(&future_id) {
-            // Purge d'instance : annulation silencieuse, payload droppé.
+            // Instance purge: silent cancellation, payload dropped.
             None => return,
             Some(entry) => entry.mode == native::WGPUCallbackMode_AllowSpontaneous,
         };
@@ -153,13 +153,13 @@ pub(crate) fn complete(future_id: u64, payload: Payload) {
         }
     };
     if let Some(payload) = to_fire {
-        // Hors verrou du registre : le callback peut ré-entrer dans l'API.
+        // Outside the registry lock: the callback may re-enter the API.
         payload();
     }
 }
 
-/// ProcessEvents : livre toutes les futures complètes de mode
-/// `AllowProcessEvents` appartenant à cette instance.
+/// ProcessEvents: delivers all completed futures of mode
+/// `AllowProcessEvents` belonging to this instance.
 pub(crate) fn sweep_process_events(context: &Arc<Context>) {
     let owner = owner_of(context);
     let mut payloads: Vec<Payload> = Vec::new();
@@ -185,9 +185,9 @@ pub(crate) fn sweep_process_events(context: &Arc<Context>) {
     payloads.into_iter().for_each(|payload| payload());
 }
 
-/// Valide une liste d'attente : ids non nuls, sans doublon, connus et possédés
-/// par l'instance. Une future déjà livrée est absente du registre → invalide.
-/// Retourne la source de chaque future (règle « Mixed Sources »).
+/// Validates a wait list: non-null ids, no duplicates, known and owned
+/// by the instance. An already delivered future is absent from the registry → invalid.
+/// Returns the source of each future ("Mixed Sources" rule).
 pub(crate) fn wait_set_sources(context: &Arc<Context>, ids: &[u64]) -> Option<Vec<Source>> {
     let owner = owner_of(context);
     let map = registry().lock();
@@ -206,8 +206,8 @@ pub(crate) fn wait_set_sources(context: &Arc<Context>, ids: &[u64]) -> Option<Ve
     Some(sources)
 }
 
-/// Retire et retourne les payloads des futures listées qui sont complètes
-/// (pending ou déjà consommées → ignorées).
+/// Removes and returns the payloads of the listed futures that are complete
+/// (pending or already consumed → ignored).
 pub(crate) fn take_ready_payloads(ids: &[u64]) -> Vec<(u64, Payload)> {
     let mut out = Vec::new();
     let mut map = registry().lock();
@@ -226,9 +226,9 @@ pub(crate) fn take_ready_payloads(ids: &[u64]) -> Vec<(u64, Payload)> {
     out
 }
 
-/// Destruction de l'instance : annule silencieusement les callbacks non livrés
-/// (webgpu.h : les callbacks peuvent être annulés à la destruction). Les
-/// gardes `OwnedHandle` des payloads droppés libèrent leurs handles.
+/// Instance destruction: silently cancels the undelivered callbacks
+/// (webgpu.h: callbacks may be cancelled at destruction). The
+/// `OwnedHandle` guards of the dropped payloads release their handles.
 pub(crate) fn purge(context: &Arc<Context>) {
     let owner = owner_of(context);
     let mut map = registry().lock();
@@ -242,8 +242,8 @@ pub(crate) fn purge(context: &Arc<Context>) {
     }
 }
 
-/// Garde un handle C passé avec ownership au callback ; libère l'Arc si le
-/// callback n'est jamais tiré (annulation à la destruction de l'instance).
+/// Guards a C handle passed with ownership to the callback; frees the Arc if the
+/// callback is never fired (cancellation at instance destruction).
 pub(crate) struct OwnedHandle<T> {
     handle: Option<*mut T>,
 }
@@ -254,7 +254,7 @@ impl<T> OwnedHandle<T> {
         OwnedHandle { handle: Some(handle) }
     }
 
-    /// Consomme la garde : le handle appartient désormais au callback.
+    /// Consumes the guard: the handle now belongs to the callback.
     pub(crate) fn take(&mut self) -> *mut T {
         self.handle.take().unwrap_or(std::ptr::null_mut())
     }
@@ -263,8 +263,8 @@ impl<T> OwnedHandle<T> {
 impl<T> Drop for OwnedHandle<T> {
     fn drop(&mut self) {
         if let Some(handle) = self.handle.take() {
-            // Annulation sans livraison : le handle n'a jamais été transféré
-            // au callback, l'Arc redevient la propriété du packer.
+            // Cancellation without delivery: the handle was never transferred
+            // to the callback, the Arc returns to the ownership of the packer.
             drop(unsafe { Arc::from_raw(handle) });
         }
     }

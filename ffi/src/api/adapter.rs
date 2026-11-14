@@ -143,9 +143,9 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         ),
     };
 
-    // Résolution synchrone côté wgc : la future se complète avant le retour,
-    // le callback est livré selon le mode (AllowSpontaneous → avant retour,
-    // convention historique de ce packer ; GUIDE §5).
+    // Synchronous resolution on the wgc side: the future completes before the
+    // return, the callback is delivered according to the mode (AllowSpontaneous → before return,
+    // historical convention of this packer; GUIDE §5).
     let future_id = future::register(context, callback_info.mode, Source::Cpu);
 
     let result = context.adapter_request_device(adapter_id, &desc, None, None);

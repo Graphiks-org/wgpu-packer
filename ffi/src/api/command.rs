@@ -172,10 +172,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         multiview_mask: None,
     };
 
-    // maxDrawCount (contrat C) : chaîne WGPURenderPassMaxDrawCount. wgpu-core
-    // 30 n'a plus ce plafond — le packer le compte lui-même (voir
-    // wgpuRenderPassEncoderDraw). Un descripteur sans chaîne vaut le défaut
-    // webgpu.h (50 000 000) ; un 0 explicite compte aussi comme défaut.
+    // maxDrawCount (C contract): WGPURenderPassMaxDrawCount chain. wgpu-core
+    // 30 no longer has this cap — the packer counts it itself (see
+    // wgpuRenderPassEncoderDraw). A descriptor without the chain takes the webgpu.h
+    // default (50 000 000); an explicit 0 also counts as the default.
     const WGPU_RENDER_PASS_MAX_DRAW_COUNT_DEFAULT: u64 = 50_000_000;
     let max_draw_count = {
         let mut from_chain: Option<u64> = None;

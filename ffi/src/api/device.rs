@@ -184,9 +184,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     }))
 }
 
-/// Mapping C -> wgc du descriptor de compute pipeline, partagé par les
-/// variantes synchrone et async (les chaînes C ne sont valides que pendant
-/// l'appel : le mapping reste sur le thread appelant).
+/// C -> wgc mapping of the compute pipeline descriptor, shared by the
+/// synchronous and async variants (the C chains are only valid during
+/// the call: the mapping stays on the calling thread).
 unsafe fn map_compute_pipeline_descriptor(
     descriptor: &native::WGPUComputePipelineDescriptor,
 ) -> wgc::pipeline::ComputePipelineDescriptor {
@@ -276,10 +276,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipelineAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // wgc 29 n'a pas de création async : mapping et création sont synchrones
-    // (les chaînes C ne survivent pas à l'appel), la future se complète avant
-    // le retour — le callback est livré selon le mode (AllowSpontaneous →
-    // avant retour, même convention que requestDevice ; GUIDE §5).
+    // wgc 29 has no async creation: mapping and creation are synchronous
+    // (the C chains do not outlive the call), the future completes before
+    // the return — the callback is delivered according to the mode (AllowSpontaneous →
+    // before return, same convention as requestDevice; GUIDE §5).
     let future_id =
         crate::future::register(context, callback_info.mode, crate::future::Source::Cpu);
 
@@ -421,8 +421,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         multiview: None,
     };
 
-    // device=None : la validation dépendante du device est différée à finish()
-    // (comportement wgc 29 conservé).
+    // device=None: device-dependent validation is deferred to finish()
+    // (wgc 29 behavior preserved).
     match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
         Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
@@ -435,8 +435,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     }
 }
 
-/// Mapping C -> wgc du descriptor de render pipeline, partagé par les
-/// variantes synchrone et async (cf. map_compute_pipeline_descriptor).
+/// C -> wgc mapping of the render pipeline descriptor, shared by the
+/// synchronous and async variants (cf. map_compute_pipeline_descriptor).
 unsafe fn map_render_pipeline_descriptor(
     descriptor: &native::WGPURenderPipelineDescriptor,
 ) -> wgc::pipeline::RenderPipelineDescriptor {
@@ -469,9 +469,9 @@ unsafe fn map_render_pipeline_descriptor(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
                     .iter()
                     .map(|buffer| {
-                        // webgpu.h : stepMode Undefined + aucun attribut = « trou »
-                        // dans le tableau des buffers (équivalent de null côté
-                        // JS, wgc 30 : Option<VertexBufferLayout>).
+                        // webgpu.h: stepMode Undefined + no attribute = "hole"
+                        // in the buffer array (equivalent of null on the
+                        // JS side, wgc 30: Option<VertexBufferLayout>).
                         if buffer.stepMode == native::WGPUVertexStepMode_Undefined
                             && buffer.attributeCount == 0
                         {
@@ -648,7 +648,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // wgc 29 n'a pas de création async (cf. wgpuDeviceCreateComputePipelineAsync).
+    // wgc 29 has no async creation (cf. wgpuDeviceCreateComputePipelineAsync).
     let future_id =
         crate::future::register(context, callback_info.mode, crate::future::Source::Cpu);
 
@@ -872,9 +872,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             .collect(),
     };
 
-    // webgpu.h : la dimension des vues de binding arrive chaînée
-    // (WGPUSType_TextureBindingViewDimension). wgc 29 ne résout pas ce
-    // concept (gfx-rs/wgpu#7428) — résolue côté packer (conv::resolve_...).
+    // webgpu.h: the binding view dimension arrives chained
+    // (WGPUSType_TextureBindingViewDimension). wgc 29 does not resolve this
+    // concept (gfx-rs/wgpu#7428) — resolved packer-side (conv::resolve_...).
     let texture_binding_view_dimension = conv::resolve_texture_binding_view_dimension(
         descriptor.dimension,
         descriptor.sampleCount,
@@ -905,8 +905,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     }))
 }
 
-/// Lit WGPUTextureBindingViewDimension dans la chaîne du descriptor de
-/// texture (None si absent).
+/// Reads WGPUTextureBindingViewDimension in the texture descriptor
+/// chain (None if absent).
 unsafe fn chained_texture_binding_view_dimension(
     descriptor: &native::WGPUTextureDescriptor,
 ) -> Option<native::WGPUTextureViewDimension> {
@@ -1010,14 +1010,14 @@ pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
 pub unsafe extern "C" fn wgpuDeviceGetLostFuture(device: native::WGPUDevice) -> native::WGPUFuture {
     let device = device.as_ref().expect("invalid device");
 
-    // Mode du deviceLostCallbackInfo : celui de la future créée ci-dessous.
+    // Mode of the deviceLostCallbackInfo: the one of the future created below.
     let mode = device.error_sink.lock().device_lost_mode;
 
-    // Future créée paresseusement, id stable ensuite. La perte est toujours
-    // routée par le sink (error.rs) qui enregistre la future à la première
-    // remontée : ici, ce branchement n'est qu'un garde-fou — la future se
-    // résout vide pour ne pas bloquer une attente, SANS re-tirer le callback
-    // (l'événement de perte n'est livré qu'une seule fois).
+    // Future created lazily, stable id afterwards. Loss is always
+    // routed by the sink (error.rs) which registers the future on the first
+    // report: here, this branch is only a safeguard — the future
+    // resolves empty so as not to block a wait, WITHOUT firing the callback
+    // again (the loss event is delivered only once).
     let mut lost = device.lost_future.lock();
     let future_id = match *lost {
         Some(id) => id,
@@ -1095,15 +1095,15 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // Résolution synchrone (le scope est poppé maintenant) : la future se
-    // complète avant le retour, livraison selon le mode.
+    // Synchronous resolution (the scope is popped now): the future
+    // completes before the return, delivery according to the mode.
     let future_id =
         crate::future::register(&device.context, callback_info.mode, crate::future::Source::Cpu);
 
     let (typ, message) = {
         let mut error_sink = device.error_sink.lock();
-        // webgpu.h : une pile vide n'est pas une erreur fatale — le callback
-        // reçoit WGPUPopErrorScopeStatus_Error (« stack was empty »).
+        // webgpu.h: an empty stack is not a fatal error — the callback
+        // receives WGPUPopErrorScopeStatus_Error ("stack was empty").
         let Some(scope) = error_sink.scopes.pop() else {
             drop(error_sink);
             crate::future::complete(
@@ -1209,10 +1209,10 @@ pub unsafe extern "C" fn wgpuDevicePoll(
     match context.device_poll(device_id, maintain) {
         Ok(wgt::PollStatus::QueueEmpty) => true,
         Ok(_) => false,
-        // Une erreur de poll (perte du device notamment) est un événement
-        // d'erreur légitime : livrée au sink — le DeviceLost y complète la
-        // lost future — jamais fatale. On ne peut pas affirmer que la queue
-        // est vide : on retourne false.
+        // A poll error (device loss in particular) is a legitimate
+        // error event: delivered to the sink — DeviceLost completes the
+        // lost future there — never fatal. We cannot assert that the queue
+        // is empty: we return false.
         Err(cause) => {
             handle_error(error_sink, cause, None, "wgpuDevicePoll");
             false

@@ -19,9 +19,9 @@ pub unsafe extern "C" fn wgpuBufferGetMapState(
     *buffer.data.map_state.lock()
 }
 
-/// Valide et retourne le pointeur de la plage mappée pour Read/WriteMappedRange
-/// (None = copie non effectuée). WGPU_WHOLE_MAP_SIZE n'est pas accepté ici
-/// (webgpu.h : taille explicite requise).
+/// Validates and returns the pointer of the mapped range for Read/WriteMappedRange
+/// (None = no copy performed). WGPU_WHOLE_MAP_SIZE is not accepted here
+/// (webgpu.h: explicit size required).
 unsafe fn mapped_range_ptr(
     buffer: native::WGPUBuffer,
     offset: usize,
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
     };
     // Per spec, no error to report. Even calling destroy multiple times is valid.
     context.buffer_destroy(buffer_id);
-    // Le destroy invalide le mapping (abort d'un map en attente via callback).
+    // Destroy invalidates the mapping (aborts a pending map via callback).
     *map_state.lock() = native::WGPUBufferMapState_Unmapped;
 }
 
@@ -103,8 +103,8 @@ pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
     offset: usize,
     size: usize,
 ) -> *const u8 {
-    // Spec §4.1 : aucune panique ne franchit l'ABI C — un buffer non mappé
-    // retourne NULL (contrat C) au lieu du handle_error_fatal hérité.
+    // Spec §4.1: no panic crosses the C ABI — an unmapped buffer
+    // returns NULL (C contract) instead of the inherited handle_error_fatal.
     let mapped = catch_unwind_contained("wgpuBufferGetConstMappedRange", || {
         let (buffer_id, context) = {
             let buffer = buffer.as_ref().expect("invalid buffer");
@@ -137,8 +137,8 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     offset: usize,
     size: usize,
 ) -> *mut u8 {
-    // Spec §4.1 : aucune panique ne franchit l'ABI C — un buffer non mappé
-    // retourne NULL (contrat C) au lieu du handle_error_fatal hérité.
+    // Spec §4.1: no panic crosses the C ABI — an unmapped buffer
+    // returns NULL (C contract) instead of the inherited handle_error_fatal.
     let mapped = catch_unwind_contained("wgpuBufferGetMappedRange", || {
         let (buffer_id, context) = {
             let buffer = buffer.as_ref().expect("invalid buffer");
@@ -200,18 +200,18 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     let userdata = new_userdata!(callback_info);
     let map_state_in_callback = map_state.clone();
 
-    // Future packer-side (timeline : queue du device créateur). La closure
-    // interne wgc met à jour l'état de map puis complète la future ; la
-    // livraison suit le mode du callbackInfo.
+    // Packer-side future (timeline: queue of the creating device). The
+    // internal wgc closure updates the map state then completes the future;
+    // delivery follows the mode of the callbackInfo.
     let future_id = crate::future::register(
         context,
         callback_info.mode,
         crate::future::Source::Queue(queue_id),
     );
 
-    // Copies possédées par la closure wgc (types Copy) : le payload construit
-    // au moment de la complétion en redérive ses propres copies — tout est
-    // 'static, la livraison peut être différée par le mode.
+    // Copies owned by the wgc closure (Copy types): the payload built
+    // at completion time derives its own copies from them — everything is
+    // 'static, delivery can be deferred by the mode.
     let callback_for_op = callback;
     let userdata_for_op = userdata;
 
@@ -222,8 +222,8 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             _ => panic!("invalid map mode"),
         },
         callback: Some(Box::new(move |result: resource::BufferAccessResult| {
-            // État suivi côté packer (wgpuBufferGetMapState) : synchronisé avec
-            // le résultat livré au consommateur.
+            // State tracked packer-side (wgpuBufferGetMapState): kept in sync with
+            // the result delivered to the consumer.
             *map_state_in_callback.lock() = if result.is_ok() {
                 native::WGPUBufferMapState_Mapped
             } else {
@@ -258,17 +258,17 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     if let Err(cause) = context.buffer_map_async(
         buffer_id,
         offset as wgt::BufferAddress,
-        // webgpu.h : WGPU_WHOLE_MAP_SIZE (SIZE_MAX) = jusqu'à la fin du
-        // buffer (wgc : None). GetMappedRange applique déjà cette règle.
+        // webgpu.h: WGPU_WHOLE_MAP_SIZE (SIZE_MAX) = up to the end of the
+        // buffer (wgc: None). GetMappedRange already applies this rule.
         match size {
             conv::WGPU_WHOLE_MAP_SIZE => None,
             _ => Some(size as wgt::BufferAddress),
         },
         operation,
     ) {
-        // Rejet synchrone (validation) : erreur routée comme avant ET la
-        // future se complète quand même — une attente dessus ne doit pas
-        // bloquer à jamais.
+        // Synchronous rejection (validation): error routed as before AND the
+        // future is completed anyway — awaiting it must not
+        // block forever.
         let message = format_error(&cause);
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
         *map_state.lock() = native::WGPUBufferMapState_Unmapped;

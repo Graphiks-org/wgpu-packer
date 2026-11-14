@@ -26,8 +26,8 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // Future packer-side (timeline : cette queue). wgc tire la closure au
-    // prochain poll couvrant la soumission ; la livraison suit le mode.
+    // Packer-side future (timeline: this queue). wgc fires the closure at the
+    // next poll covering the submission; delivery follows the mode.
     let future_id = crate::future::register(
         context,
         callback_info.mode,
@@ -74,9 +74,9 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         .collect::<SmallVec<[_; 4]>>();
 
     if let Err(cause) = context.queue_submit(queue_id, &command_buffers) {
-        // Sémantique WebGPU : une erreur de validation au submit est livrée au
-        // sink (scope d'erreur courant ou uncaptured error handler) — l'appel
-        // rend la main, le process ne s'arrête jamais.
+        // WebGPU semantics: a validation error at submit is delivered to the
+        // sink (current error scope or uncaptured error handler) — the call
+        // returns, the process never stops.
         handle_error(error_sink, cause.1, None, "wgpuQueueSubmit");
     }
 }
@@ -195,9 +195,9 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 
     match context.queue_submit(queue_id, &command_buffers) {
         Ok(submission_index) => submission_index,
-        // Sémantique WebGPU : erreur livrée au sink (scope ou uncaptured
-        // handler), l'appel rend la main. L'index réservé avant la validation
-        // reste retourné — c'est le rôle du tuple d'erreur de queue_submit.
+        // WebGPU semantics: error delivered to the sink (scope or uncaptured
+        // handler), the call returns. The index reserved before validation
+        // is still returned — that is the role of the queue_submit error tuple.
         Err(cause) => {
             handle_error(error_sink, cause.1, None, "wgpuQueueSubmitForIndex");
             cause.0

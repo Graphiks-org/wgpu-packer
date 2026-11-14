@@ -113,8 +113,8 @@ pub unsafe extern "C" fn wgpuTextureGetSampleCount(texture: native::WGPUTexture)
 pub unsafe extern "C" fn wgpuTextureGetTextureBindingViewDimension(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureViewDimension {
-    // Résolu à la création côté packer (valeur chaînée explicite ou règle de
-    // dérivation) : wgc 29 n'expose pas ce concept (gfx-rs/wgpu#7428).
+    // Resolved at creation packer-side (explicit chained value or derivation
+    // rule): wgc 29 does not expose this concept (gfx-rs/wgpu#7428).
     let texture = texture.as_ref().expect("invalid texture");
     texture.data.texture_binding_view_dimension
 }
