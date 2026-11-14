@@ -5,37 +5,55 @@ import unittest
 sys.path.insert(0, os.path.dirname(__file__))
 import matrix
 
-REQUIRED = {"name", "rust_target", "platform", "os_runner", "backends", "link_libs", "deploy_env"}
+REQUIRED = {"kotlinTarget", "triple", "os", "arch", "runner", "toolchain", "backends", "status"}
+WGPU_SPECIFIC = {"linkLibs", "deployEnv"}
+DROPPED = {"tvosArm64", "tvosSimulatorArm64"}
 
 
 class Matrix(unittest.TestCase):
-    def test_ten_targets(self):
-        self.assertEqual(len(matrix.load()["targets"]), 10)
+    def test_schema_version(self):
+        self.assertEqual(matrix.load()["schemaVersion"], 1)
+
+    def test_ten_v1_targets(self):
+        v1 = [t for t in matrix.load()["targets"] if t["status"] == "v1"]
+        self.assertEqual(len(v1), 10)
 
     def test_schema(self):
         for t in matrix.load()["targets"]:
-            self.assertTrue(REQUIRED <= set(t), f"champs manquants dans {t['name']}")
+            self.assertTrue(REQUIRED <= set(t), f"champs manquants dans {t['kotlinTarget']}")
 
-    def test_unique_names_and_targets(self):
+    def test_unique_kotlin_targets_and_triples(self):
         m = matrix.load()["targets"]
-        names = [t["name"] for t in m]
-        triples = [t["rust_target"] for t in m]
-        self.assertEqual(len(names), len(set(names)), "noms de cibles dupliqués")
-        self.assertEqual(len(triples), len(set(triples)), "triples rust dupliqués")
+        names = [t["kotlinTarget"] for t in m]
+        triples = [t["triple"] for t in m]
+        self.assertEqual(len(names), len(set(names)), "kotlinTarget dupliqués")
+        self.assertEqual(len(triples), len(set(triples)), "triples dupliqués")
 
     def test_runner_coverage(self):
-        runners = {t["os_runner"] for t in matrix.load()["targets"]}
+        runners = {t["runner"] for t in matrix.load()["targets"]}
         self.assertTrue(runners <= {"macos-14", "ubuntu-24.04", "windows-2022"})
 
     def test_apple_have_deploy_env(self):
         for t in matrix.load()["targets"]:
-            if t["platform"] in ("macos", "ios", "ios-sim"):
-                self.assertTrue(t["deploy_env"], f"{t['name']} doit épingler un déploiement")
+            if t["os"] in ("macos", "ios", "ios-sim"):
+                self.assertTrue(t.get("deployEnv"), f"{t['kotlinTarget']} doit épingler un déploiement")
 
-    def test_static_and_shared_flags(self):
+    def test_wgpu_specific_fields_preserved(self):
         for t in matrix.load()["targets"]:
-            self.assertIsInstance(t["static_ok"], bool)
-            self.assertIsInstance(t["shared_ok"], bool)
+            self.assertTrue(WGPU_SPECIFIC <= set(t), f"{t['kotlinTarget']} perd {WGPU_SPECIFIC - set(t)}")
+
+    def test_linkages_are_valid(self):
+        for t in matrix.load()["targets"]:
+            self.assertTrue(t["linkages"], f"{t['kotlinTarget']} sans linkage")
+            self.assertTrue(set(t["linkages"]) <= {"static", "shared"})
+
+    def test_dropped_targets_are_documented(self):
+        dropped = {t["kotlinTarget"] for t in matrix.load()["targets"] if t["status"] == "dropped"}
+        self.assertEqual(dropped, DROPPED)
+
+    def test_null_backend_is_mandatory(self):
+        for t in matrix.load()["targets"]:
+            self.assertIn("null", t["backends"], t["kotlinTarget"])
 
 
 unittest.main()
