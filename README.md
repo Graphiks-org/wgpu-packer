@@ -22,8 +22,8 @@ To republish after a fix: increment `PACKER_VERSION` in `wgpu-pin.env`, push
 a tag `v<WGPU_VERSION>.<PACKER_VERSION>`. **Never reuse an existing tag**: a
 published release is immutable, and consumers pin its SHA256.
 
-The `manifest.json` inside each archive records both `wgpu.crates` and
-`wgpu.nativeTag`, since the file name only carries the crates version.
+Each packaged archive carries a `manifest.json` recording both `wgpu.crates`
+and `wgpu.nativeTag`, since the file name only carries the crates version.
 
 ## Target status
 
@@ -62,7 +62,7 @@ bash scripts/build-target.sh macosArm64
 bash scripts/package.sh macosArm64 static  # -> dist/wgpu-30.0.1.0-macosArm64-static.tar.gz
 ```
 
-Android targets require `NDK_HOME` pointing at NDK 29.0.14206865.
+Android targets require `NDK_HOME` pointing at NDK 27.0.11902866.
 
 ## Tests
 

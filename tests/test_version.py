@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import unittest
 
@@ -35,6 +34,16 @@ class Version(unittest.TestCase):
         with open(os.path.join(ROOT, "scripts", "package.sh"), encoding="utf-8") as handle:
             text = handle.read()
         self.assertIn('VERSION="$WGPU_VERSION.$PACKER_VERSION"', text)
+        version_line = next(
+            line for line in text.splitlines() if line.startswith("VERSION=")
+        )
+        composed = version_line.split("=", 1)[1].strip().strip('"')
+        self.assertEqual(
+            composed
+            .replace("$WGPU_VERSION", p["WGPU_VERSION"])
+            .replace("$PACKER_VERSION", p["PACKER_VERSION"]),
+            expected.removeprefix("wgpu-"),
+        )
         self.assertIn('ARCHIVE="dist/wgpu-$VERSION-$NAME-$KIND.tar.gz"', text)
 
     def test_release_does_not_clobber(self):
