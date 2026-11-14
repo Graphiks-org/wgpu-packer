@@ -82,10 +82,14 @@ jobs:
       - if: contains(matrix.target, 'android')
         # The ubuntu-24.04 image already ships the Android SDK and several
         # NDKs; `android-actions/setup-android` re-runs sdkmanager and fails
-        # on the pre-installed packages. Reuse the image's SDK instead.
+        # on the pre-installed packages. Reuse the image's SDK, and take the
+        # newest NDK it ships (the exact patch is reported by the build).
         run: |
-          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
-          echo "NDK_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk/27.0.11902866" >> "$GITHUB_ENV"
+          sdk="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          ndk="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | tail -1)"
+          echo "using NDK: $ndk"
+          echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
       - if: matrix.target == 'windowsMsvcX64'
         uses: ilammy/msvc-dev-cmd@v1 # MSVC linker + dumpbin in PATH for checks.py
       - if: matrix.target == 'windowsMsvcX64'

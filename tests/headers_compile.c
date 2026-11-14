@@ -2,8 +2,9 @@
 #include "webgpu.h"
 #include "wgpu.h"
 
-int main(void) {
+/* No `main` here: this TU is linked together with link_main.c, which owns
+ * the entry point. It only proves the declarations are usable. */
+void wgpu_headers_compile_probe(void) {
     (void)wgpuCreateInstance;      /* the declarations are linkable */
     (void)wgpuDebugTriggerPanic;
-    return 0;
 }
