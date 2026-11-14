@@ -154,9 +154,12 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
         return;
     }
+    // `/DEF:` rather than a bare path: a bare `.def` argument is not a linker
+    // input file to link.exe in every invocation (LNK1107), while `/DEF:` is
+    // unambiguous.
     let def_path = out_path.join("wgpu_packer.def");
     std::fs::write(&def_path, def).expect("writing wgpu_packer.def");
-    println!("cargo:rustc-cdylib-link-arg={}", def_path.display());
+    println!("cargo:rustc-cdylib-link-arg=/DEF:{}", def_path.display());
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
