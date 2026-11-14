@@ -409,8 +409,8 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
         Some(sources) => sources,
         None => {
             log::error!(
-                "wgpuInstanceWaitAny : future inconnue, déjà consommée, nulle, \
-                 en doublon ou appartenant à une autre instance"
+                "wgpuInstanceWaitAny: unknown, already consumed, null, duplicated \
+                 or foreign future"
             );
             return native::WGPUWaitStatus_Error;
         }
@@ -422,8 +422,8 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
         // and non-mixed sources: at most one queue (webgpu.h Mixed Sources).
         if !instance.timed_wait_any {
             log::error!(
-                "wgpuInstanceWaitAny : timeoutNS > 0 exige la feature TimedWaitAny \
-                 à la création de l'instance"
+                "wgpuInstanceWaitAny: timeoutNS > 0 requires the TimedWaitAny \
+                 feature at instance creation"
             );
             return native::WGPUWaitStatus_Error;
         }
@@ -436,8 +436,8 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
             .collect();
         if queues.len() > 1 {
             log::error!(
-                "wgpuInstanceWaitAny : attente temporisée invalide — futures \
-                 issues de plusieurs queues (webgpu.h Mixed Sources)"
+                "wgpuInstanceWaitAny: invalid timed wait - futures from several \
+                 queues (webgpu.h Mixed Sources)"
             );
             return native::WGPUWaitStatus_Error;
         }
