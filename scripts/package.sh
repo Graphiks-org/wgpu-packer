@@ -55,6 +55,18 @@ done
 
 mkdir -p dist
 ARCHIVE="dist/wgpu-$VERSION-$NAME-$KIND.tar.gz"
+# Le nom de l'archive ne porte que la version des crates : le manifest est le
+# seul endroit qui enregistre aussi le tag wgpu-native des headers vendorés.
+# Il est généré avant le tar pour entrer dans l'archive.
+python3 packaging/make-manifest.py \
+  --install-dir "$STAGE" \
+  --kotlin-target "$NAME" \
+  --entry-json "$(python3 -c "import sys,json; sys.path.insert(0,'tests'); import matrix; print(json.dumps(matrix.by_kotlin_target('$NAME')))")" \
+  --wgpu-version "$WGPU_VERSION" \
+  --native-tag "$WGPU_NATIVE_TAG" \
+  --packer-version "$PACKER_VERSION" \
+  --linkage "$KIND" \
+  --out "$STAGE/manifest.json"
 tar -czf "$ARCHIVE" -C "$STAGE" .
 if command -v shasum >/dev/null; then HASHER="shasum -a 256"; else HASHER="sha256sum"; fi
 ( cd dist && $HASHER "$(basename "$ARCHIVE")" > "$(basename "$ARCHIVE").sha256" )
