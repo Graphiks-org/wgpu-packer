@@ -25,8 +25,13 @@ ce spike comble, en allant jusqu'au lancement sur émulateur.
 | Hôte | macOS, Apple Silicon (arm64) |
 | Émulateur | AVD `Medium_Phone`, `arm64-v8a`, `sys.boot_completed=1` |
 | Kotlin/Native | **2.4.10** (prebuilt présent dans `~/.konan`, contrairement à ce que supposait le brief) |
-| NDK du packer | 27.3.13750724 (r27d) |
+| NDK ayant construit l'archive testée | **27.3.13750724** (r27d), clang 18.0.4 — c'est le NDK présent sur la machine de mesure, sélectionné par `NDK_HOME` via `scripts/build-target.sh` |
+| NDK épinglé par la CI | **27.0.11902866** (`.github/workflows/build.yml:86`) — **différent** de celui utilisé ici ; la CI n'a pas été rejouée pour ce spike |
 | NDK bundlé par K/N 2.4.10 | `target-toolchain-2-osx-android_ndk`, clang **8.0.7**, `AndroidVersion.txt` = `8.0.7`, binaire construit sous `ndk-release-r20` → ère **NDK r20**, pas r19c |
+
+La différence 27.3 / 27.0 ne change pas la nature de la mesure (le packer ne
+produit pas d'objets C++), mais elle n'est pas nulle : le verdict porte sur une
+archive construite avec 27.3.
 
 ### Reproduction sur émulateur
 
@@ -92,32 +97,92 @@ I ActivityTaskManager: Displayed io.ygdrasil.wgpu.app.native.debug/android.app.N
 ```
 
 Aucune ligne `FATAL`, `UnsatisfiedLink`, `undefined symbol` ou `dlopen failed`.
-Le processus reste vivant (`adb shell pidof` → PID), et `adb exec-out screencap`
-montre le triangle rouge sur fond vert. **L'application démarre et rend.**
+Le processus reste vivant (`adb shell pidof io.ygdrasil.wgpu.app.native.debug`
+→ `3878`), et `adb exec-out screencap` montre le triangle rouge sur fond vert.
+**L'application de l'ancienne lib démarre et rend.**
 
-#### Reproduction avec l'archive du packer
+### Reproduction avec l'archive du packer
 
 L'APK ci-dessus lie `wgpu-native` v29, pas notre packer. Pour fermer l'écart,
 `libWGPU.a` extrait par l'ancienne lib a été remplacé par
 `target/aarch64-linux-android/release/libwgpu_packer.a` (notre archive, wgpu
-v30.0.1.0), puis relink forcé (`--rerun-tasks`). Notre archive exporte 228
-symboles `wgpu*` contre 226 pour l'ancienne, et c'est un **sur-ensemble** :
-aucun symbole exigé par le cinterop v29 ne manque.
+v30.0.1.0), puis relink forcé.
 
-`BUILD SUCCESSFUL in 1m 14s`, puis install + lancement. logcat :
+**Attention** : la tâche d'extraction Gradle
+`unzip-libwgpu_native.a-from-wgpu-android-aarch64-release.zip` peut réécrire
+`libWGPU.a` depuis le zip téléchargé. Il faut donc :
+
+1. copier notre archive **après** l'extraction ;
+2. relancer le build en excluant cette tâche (`-x unzip-...`) ;
+3. vérifier le md5 de `libWGPU.a` **après** le build.
+
+Commandes exactes :
 
 ```
-I Konan_main: TRACE : Device::create_render_pipeline -> Id(0,1)
+$ cp target/aarch64-linux-android/release/libwgpu_packer.a \
+     /tmp/old-wgpu4k-native/wgpu4k-native/build/native/android-aarch64/lib/libWGPU.a
+$ md5 .../libWGPU.a
+MD5 (.../libWGPU.a) = 46b70a90f08d77a8e1bc78ee01c50b80   # ← notre archive
+
+$ cd /tmp/old-wgpu4k-native && ./gradlew :demo:android-native:assembleDebug --rerun-tasks \
+     -x unzip-libwgpu_native.a-from-wgpu-android-aarch64-release.zip --no-daemon
+BUILD SUCCESSFUL in 49s
+70 actionable tasks: 70 executed
+
+$ md5 .../libWGPU.a
+MD5 (.../libWGPU.a) = 46b70a90f08d77a8e1bc78ee01c50b80   # ← toujours la nôtre après le build
+```
+
+Preuve que le `.so` final **contient notre code** (et pas seulement que le lien
+a réussi) :
+
+```
+$ llvm-nm -gU demo/common/build/bin/androidNativeArm64/debugShared/libwgpu4k_demo.so | grep -c wgpu_packer
+37
+$ strings -a .../libwgpu4k_demo.so | grep "panique contenue"
+$[wgpu_packer] panique contenue dans
+```
+
+(la chaîne vient de `ffi/src/ffi_utils.rs:13` ; les 37 symboles incluent
+`_ZN11wgpu_packer...`, `...wgpu_packer..objects..WGPUDeviceImpl..drop...`, etc.)
+
+Notre archive exporte 228 symboles `wgpu*` contre 226 pour l'ancienne, et c'est
+un **sur-ensemble** : aucun symbole exigé par le cinterop v29 ne manque.
+
+Install + lancement :
+
+```
+$ adb install -r demo/android-native/build/outputs/apk/debug/android-native-debug.apk
+Success
+$ adb shell am start -n io.ygdrasil.wgpu.app.native.debug/android.app.NativeActivity
+Starting: Intent { cmp=io.ygdrasil.wgpu.app.native.debug/android.app.NativeActivity }
+```
+
+logcat (extrait) :
+
+```
+D nativeloader: Load .../base.apk!/lib/arm64-v8a/libwgpu4k_demo.so using class loader ns clns-9 (caller=<unknown>): ok
+I Konan_main: ANativeActivity_onCreate called
+I NativeActivity: onNativeWindowCreated called
+I Konan_main: DEBUG : Instance::new: created Vulkan backend
+I Konan_main: TRACE : Device::create_render_pipeline -> RenderPipelineId(0,1)
 I Konan_main: TRACE : RenderPass::draw 3 1 0 0
 I Konan_main: TRACE : Finished encoding render pass (success)
 I Konan_main: TRACE : Queue::submit returned submit index 1
-I ActivityTaskManager: Displayed io.ygdrasil.wgpu.app.native.debug/android.app.NativeActivity for user 0: +2s130ms
+I ActivityTaskManager: Displayed io.ygdrasil.wgpu.app.native.debug/android.app.NativeActivity for user 0: +4s2ms
 ```
 
-Ces `TRACE` sont émis par **notre** code Rust (le packer), pas par
-wgpu-native : c'est la preuve que l'archive liée est bien la nôtre. Le
-processus survit, aucune erreur de chargement, et le triangle s'affiche
-(`/tmp/packer-android-native.png`).
+Aucune ligne `FATAL`, `tombstone`, `SIGSEGV`, `SIGABRT`, `UnsatisfiedLink`,
+`undefined symbol` ou `dlopen failed`. Processus vivant
+(`adb shell pidof io.ygdrasil.wgpu.app.native.debug` → `4810`). Capture :
+`/tmp/packer-android-native-v2.png` — triangle rouge sur fond vert.
+
+**Note méthodologique** : les lignes `TRACE :` sont émises par le Kotlin du
+démo (`demo/common/src/commonMain/kotlin/ext.kt`, `println("TRACE : ...")`) à
+partir de messages de `wgpu_core`, présent dans **les deux** archives (v29 comme
+v30). Elles ne distinguent donc **pas** v29 de notre v30. La preuve que
+l'archive liée est la nôtre est le couple **md5 de `libWGPU.a`** + **symboles
+`wgpu_packer` et chaîne `[wgpu_packer] panique contenue` dans le `.so` final**.
 
 ### Symboles libc++ non résolus
 
@@ -129,8 +194,8 @@ libc++ bundlé par K/N vit sous `~/.konan/dependencies/target-toolchain-2-osx-an
 /Users/chaos/.konan/dependencies/target-toolchain-2-osx-android_ndk/sysroot/usr/lib/aarch64-linux-android/libc++_static.a
 ```
 
-Comparaison des symboles non résolus (`llvm-nm -u`, filtrés sur
-`std::__ndk1|__libcpp|__cxx_atomic`) :
+Comparaison des symboles non résolus (`llvm-nm -u`), filtrés sur
+`std::__ndk1|__libcpp|__cxx_atomic` :
 
 ```
 === /tmp/libWGPU.a.orig   (ancienne lib, wgpu-native v29, android-aarch64) ===
@@ -141,24 +206,47 @@ Comparaison des symboles non résolus (`llvm-nm -u`, filtrés sur
 0
 ```
 
-Autrement dit : les deux archives ne référencent **aucun** symbole libc++ non
-résolu. Le libc++ de K/N 2.4.10 ne définit effectivement pas
-`__libcpp_verbose_abort` ni `__libcpp_atomic_wait` (compte = 0), mais rien dans
-les archives ne les demande. Même constat pour `androidNativeX64` (0 symbole).
-Le `.so` final ne porte lui non plus aucune référence libc++ non résolue
-(`llvm-nm -D -u` → 0).
+**Portée de ce filtre** : il ne couvre que les symboles manglés sous
+`std::__ndk1` (le namespace inline de libc++ NDK), `__libcpp*` et
+`__cxx_atomic*`. Il ne couvre **pas** `__cxa_*` ni `_Unwind_*`, et « 0
+symboles » ne signifie donc **pas** « aucune référence au runtime C++ ».
+
+Mesures complémentaires sur les mêmes archives :
+
+| Filtre | Ancienne (v29) | Nôtre (v30) |
+| --- | --- | --- |
+| `std::__ndk1` / `__libcpp` / `__cxx_atomic` | 0 | 0 |
+| `__cxa_*` | 0 | 0 |
+| `_Unwind_*` | **124** | **127** |
+
+Les `_Unwind_*` existent donc bien, dans **les deux** archives. Ce ne sont pas
+des symboles libc++ : ils sont résolus au lien final par le runtime de
+déroulement fourni par le toolchain K/N. Vérification : le `.so` final ne les
+laisse pas indéfinis (`llvm-nm -D -u` → 0 `_Unwind_*`), et l'application
+démarre. Le libc++ de K/N 2.4.10 ne définit pas `__libcpp_verbose_abort` ni
+`__libcpp_atomic_wait` (compte = 0), mais rien dans les archives ne les demande.
+
+Même constat pour `androidNativeX64` (0 symbole sous le filtre libc++). Le
+`.so` final ne porte lui non plus aucune référence `std::__ndk1`/`__libcpp`/
+`__cxx_atomic` non résolue (`llvm-nm -D -u` → 0).
 
 ## Verdict
 
 VERDICT: supported
 
 Une application Kotlin/Native 2.4.10 liant l'archive de ce packer se construit,
-s'installe et s'exécute sur un émulateur Android arm64 : le triangle est rendu
-via Vulkan et le processus ne meurt pas. L'affirmation du spike dawn-packer
-(« le lien K/N laisse des symboles libc++ non résolus, l'app crashe au
-chargement ») ne se reproduit pas ici, parce qu'elle concernait l'archive C++ de
-**Dawn**, qui référence `__libcpp_verbose_abort` et consorts ; notre packer est
-du Rust et n'émet aucune référence C++ runtime.
+s'installe et **s'exécute** sur un émulateur Android arm64 : le triangle est
+rendu via Vulkan, le processus ne meurt pas, et le `.so` final contient
+effectivement du code du packer (37 symboles `wgpu_packer`, chaîne
+`[wgpu_packer] panique contenue`) — l'archive liée est donc bien la nôtre, et
+non celle de wgpu-native v29.
+
+L'affirmation du spike dawn-packer (« le lien K/N laisse des symboles libc++
+non résolus, l'app crashe au chargement ») ne se reproduit pas ici. Le spike
+dawn-packer l'avait rapporté pour **son** archive C++ (Dawn référence
+`__libcpp_verbose_abort` et consorts) ; ce spike-ci n'a pas testé Dawn et ne
+peut donc pas confirmer sa cause. Notre packer est du Rust et n'émet aucune
+référence libc++.
 
 ## Conséquence pour le packer
 
@@ -186,6 +274,15 @@ Les deux cibles passent en `v1` avec `linkages: ["static"]` dans
   écrite pour wgpu v30.
 - **`linkages: ["static"]` seulement.** Le mode `shared` n'a pas été testé ;
   l'ancienne lib déclarait les deux, mais rien ici ne prouve le `.so`.
+- **NDK 27.3.13750724 ici, 27.0.11902866 en CI.** L'archive mesurée a été
+  construite avec le NDK local 27.3 ; la CI épingle 27.0. La CI n'a pas été
+  rejouée pour ce spike.
+- **`androidNativeX64` a nécessité un contournement local de bindgen.**
+  `ffi/build.rs` n'a pas de branche Android ; la compilation x86_64 a été
+  obtenue en passant
+  `BINDGEN_EXTRA_CLANG_ARGS_<triple>="--target=... --sysroot=<NDK sysroot>"`.
+  Si la CI échoue sur cette cible, `ffi/build.rs` aura besoin d'une branche
+  Android comme ses branches iOS/macOS.
 - Le spike dawn-packer reste valable **pour Dawn** : son archive C++ référence
   bien des symboles absents du libc++ de K/N. Ce verdict ne l'infirme pas ; il
   montre que le problème est propre au C++ de Dawn, pas au mécanisme de lien

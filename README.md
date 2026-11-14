@@ -51,9 +51,11 @@ Dropped targets:
 | `tvosSimulatorArm64` | no Rust target; wgpu-hal has no tvOS code |
 
 Note: the Android archives are consumed by Kotlin/Native fine — a K/N 2.4.10
-app linking `libwgpu_packer.a` builds, installs and renders on an emulator
-(see `docs/spikes/android.md`). Only the static linkage is supported and
-validated; the shared `.so` is not tested.
+app linking `libwgpu_packer.a` builds, installs and renders on an emulator;
+the linked archive was confirmed to be the packer's (md5 + `wgpu_packer`
+symbols in the final `.so`). See `docs/spikes/android.md`. Only the static
+linkage is supported and validated; the shared `.so` is not tested. The spike
+was measured with NDK 27.3.13750724, while CI pins 27.0.11902866.
 
 ## Local build
 

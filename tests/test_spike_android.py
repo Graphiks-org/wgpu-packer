@@ -35,6 +35,7 @@ class AndroidSpike(unittest.TestCase):
         for name in ("androidNativeArm64", "androidNativeX64"):
             if verdict == "supported":
                 self.assertEqual(entries[name]["status"], "v1", name)
+                self.assertEqual(entries[name]["linkages"], ["static"], name)
             else:
                 self.assertNotEqual(entries[name]["status"], "v1", name)
 
