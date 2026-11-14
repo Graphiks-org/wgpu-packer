@@ -1,0 +1,146 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  oracle_macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi # Review Focus #2 : release, panic=unwind
+      - run: python3 tests/test_checks.py && python3 tests/test_matrix.py
+
+  oracle_linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: sudo apt-get update && sudo apt-get install -y mesa-utils libgl1-mesa-dri libegl1
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi
+
+  oracle_windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi
+
+  build:
+    needs: [oracle_macos, oracle_linux, oracle_windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: macos-arm64, runner: macos-14 }
+          - { target: macos-x86_64, runner: macos-14 }
+          - { target: ios-arm64, runner: macos-14 }
+          - { target: ios-sim-arm64, runner: macos-14 }
+          - { target: linux-x64, runner: ubuntu-24.04 }
+          - { target: linux-arm64, runner: ubuntu-24.04 }
+          - { target: windows-msvc-x64, runner: windows-2022 }
+          - { target: windows-mingw-x64, runner: ubuntu-24.04 }
+          - { target: android-arm64, runner: ubuntu-24.04 }
+          - { target: android-x64, runner: ubuntu-24.04 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim
+      - if: matrix.target == 'linux-arm64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo 'CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc' >> "$GITHUB_ENV"
+      - if: matrix.target == 'windows-mingw-x64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+          echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc' >> "$GITHUB_ENV"
+          echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_AR=x86_64-w64-mingw32-ar' >> "$GITHUB_ENV"
+      - if: contains(matrix.target, 'android')
+        uses: android-actions/setup-android@v3
+      - if: contains(matrix.target, 'android')
+        run: |
+          yes | sdkmanager "ndk;27.0.11902866" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.11902866" >> "$GITHUB_ENV"
+      - if: matrix.target == 'windows-msvc-x64'
+        uses: ilammy/msvc-dev-cmd@v1 # dumpbin dans le PATH pour checks.py
+      - run: ./scripts/sync.sh
+      - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
+      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + lien statique croisé (finding 5)
+      - run: ./scripts/package.sh ${{ matrix.target }} static
+      - if: contains(fromJSON('["macos-arm64","macos-x86_64","linux-x64","linux-arm64","windows-msvc-x64","windows-mingw-x64","android-arm64","android-x64"]'), matrix.target)
+        run: ./scripts/package.sh ${{ matrix.target }} shared
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*.tar.gz
+
+  kotlin_smoke:
+    needs: build
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-macos-arm64
+          path: dist
+      - run: |
+          mkdir -p /tmp/smoke
+          tar xzf dist/wgpu-30.0.1.0-macos-arm64-static.tar.gz -C /tmp/smoke
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.8.2"
+      - run: gradle linkReleaseExecutableNative -PwgpuDist=/tmp/smoke --no-daemon
+        working-directory: packaging/kotlin-smoke
+      - run: |
+          out=$(packaging/kotlin-smoke/build/bin/native/releaseExecutable/wgpu-kotlin-smoke.kexe)
+          echo "$out"
+          grep -q KOTLIN_SMOKE_OK <<< "$out"
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, kotlin_smoke]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - run: cd dist && shasum -a 256 *.tar.gz > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
+            dist/SHA256SUMS

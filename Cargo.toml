@@ -1,0 +1,28 @@
+[workspace]
+resolver = "2"
+members = ["ffi"]
+
+[workspace.dependencies.wgc]
+package = "wgpu-core"
+version = "=30.0.1"
+
+[workspace.dependencies.wgt]
+package = "wgpu-types"
+version = "=30.0.1"
+
+[workspace.dependencies.hal]
+package = "wgpu-hal"
+version = "=30.0.1"
+
+[workspace.dependencies.naga]
+package = "naga"
+version = "=30.0.1"
+
+[profile.release]
+panic = "unwind"
+# rustc's own debuginfo stripping mis-aligns the LINKEDIT string pool of
+# cdylibs (rust-lang/rust#157750): macOS 27's stricter dyld then rejects the
+# library at dlopen with "mis-aligned LINKEDIT string pool". Keep debuginfo in
+# the artifacts; scripts/package.sh strips the Apple-darwin shared library with
+# /usr/bin/strip, which pads LINKEDIT correctly.
+strip = "none"

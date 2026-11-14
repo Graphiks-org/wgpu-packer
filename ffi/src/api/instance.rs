@@ -1,0 +1,516 @@
+#[allow(clippy::missing_safety_doc)]
+
+use crate::conv::{
+    map_instance_backend_flags,
+    map_instance_descriptor, map_surface, CreateSurfaceParams,
+};
+use parking_lot::Mutex;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use crate::utils::{make_slice, str_into_string_view, string_view_into_str};
+
+use crate::callbacks::*;
+use crate::conv;
+use crate::error::*;
+use crate::follow_chain;
+use crate::future::{self, Source};
+use crate::native;
+use crate::new_userdata;
+use crate::objects::*;
+
+// webgpu.h functions
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCreateInstance(
+    descriptor: Option<&native::WGPUInstanceDescriptor>,
+) -> native::WGPUInstance {
+    // requiredFeatures doit être un sous-ensemble des features supportées —
+    // panic sinon, comme pour toute valeur d'enum invalide ailleurs.
+    // TimedWaitAny activée ici autorise wgpuInstanceWaitAny timeoutNS > 0.
+    let timed_wait_any = match descriptor {
+        Some(descriptor) => {
+            let required =
+                make_slice(descriptor.requiredFeatures, descriptor.requiredFeatureCount);
+            for feature in required {
+                if !SUPPORTED_INSTANCE_FEATURES.contains(feature) {
+                    panic!("Unsupported instance feature: {feature}");
+                }
+            }
+            required.contains(&native::WGPUInstanceFeatureName_TimedWaitAny)
+        }
+        None => false,
+    };
+
+    let instance_desc = match descriptor {
+        Some(descriptor) => follow_chain!(map_instance_descriptor(
+            (descriptor),
+            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+        )),
+        None => wgt::InstanceDescriptor::new_without_display_handle(),
+    };
+
+    Arc::into_raw(Arc::new(WGPUInstanceImpl {
+        context: Arc::new(Context::new("wgpu", instance_desc, None)),
+        timed_wait_any,
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetInstanceLimits(
+    limits: Option<&mut native::WGPUInstanceLimits>,
+) -> native::WGPUStatus {
+    let limits = limits.expect("invalid return pointer \"limits\"");
+
+    // Le registre de futures est un simple HashMap : aucune limite réelle sur
+    // le nombre de futures d'une attente temporisée (webgpu.h : borne
+    // timedWaitAnyMaxCount des WaitAny avec timeoutNS > 0).
+    limits.timedWaitAnyMaxCount = usize::MAX;
+
+    native::WGPUStatus_Success
+}
+
+/// Features d'instance réellement supportées (webgpu.h WGPUInstanceFeatureName).
+/// TimedWaitAny : wgpuInstanceWaitAny accepte timeoutNS > 0 quand la feature
+/// est demandée à la création (timedWaitAnyMaxCount = usize::MAX rapporté).
+/// MultipleDevicesPerAdapter : wgc permet plusieurs requestDevice par adapter.
+#[cfg(feature = "spirv")]
+const SUPPORTED_INSTANCE_FEATURES: &[native::WGPUInstanceFeatureName] = &[
+    native::WGPUInstanceFeatureName_TimedWaitAny,
+    native::WGPUInstanceFeatureName_ShaderSourceSPIRV,
+    native::WGPUInstanceFeatureName_MultipleDevicesPerAdapter,
+];
+#[cfg(not(feature = "spirv"))]
+const SUPPORTED_INSTANCE_FEATURES: &[native::WGPUInstanceFeatureName] = &[
+    native::WGPUInstanceFeatureName_TimedWaitAny,
+    native::WGPUInstanceFeatureName_MultipleDevicesPerAdapter,
+];
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetInstanceFeatures(
+    features: Option<&mut native::WGPUSupportedInstanceFeatures>,
+) {
+    let features = features.expect("invalid return pointer \"features\"");
+
+    // Copie possédée, à libérer via wgpuSupportedInstanceFeaturesFreeMembers.
+    let copy: Vec<native::WGPUInstanceFeatureName> = SUPPORTED_INSTANCE_FEATURES.to_vec();
+    features.featureCount = copy.len();
+    features.features = copy.as_ptr();
+    std::mem::forget(copy);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuHasInstanceFeature(
+    feature_name: native::WGPUInstanceFeatureName,
+) -> native::WGPUBool {
+    SUPPORTED_INSTANCE_FEATURES.contains(&feature_name) as native::WGPUBool
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSupportedInstanceFeaturesFreeMembers(
+    supported_features: native::WGPUSupportedInstanceFeatures,
+) {
+    if !supported_features.features.is_null() && supported_features.featureCount > 0 {
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            supported_features.features as *mut native::WGPUInstanceFeatureName,
+            supported_features.featureCount,
+        )))
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetProcAddress(proc_name: native::WGPUStringView) -> native::WGPUProc {
+    // Table générée par build.rs depuis les headers (lib.rs ::lookup_proc) :
+    // toute fonction déclarée est résoluble, y compris les stubs documentés
+    // (leur appel abort — cf. GUIDE §6).
+    match string_view_into_str(proc_name) {
+        Some(name) => crate::lookup_proc(name),
+        None => None,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
+    supported_features: native::WGPUSupportedFeatures,
+) {
+    if !supported_features.features.is_null() && supported_features.featureCount > 0 {
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            supported_features.features as *mut native::WGPUFeatureName,
+            supported_features.featureCount,
+        )))
+    }
+}
+
+// Instance methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceCreateSurface(
+    instance: native::WGPUInstance,
+    descriptor: Option<&native::WGPUSurfaceDescriptor>,
+) -> native::WGPUSurface {
+    let context = &instance.as_ref().expect("invalid instance").context;
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    let create_surface_params = follow_chain!(
+        map_surface((descriptor),
+            WGPUSType_SurfaceSourceWindowsHWND => native::WGPUSurfaceSourceWindowsHWND,
+            WGPUSType_SurfaceSourceXCBWindow => native::WGPUSurfaceSourceXCBWindow,
+            WGPUSType_SurfaceSourceXlibWindow => native::WGPUSurfaceSourceXlibWindow,
+            WGPUSType_SurfaceSourceWaylandSurface => native::WGPUSurfaceSourceWaylandSurface,
+            WGPUSType_SurfaceSourceMetalLayer => native::WGPUSurfaceSourceMetalLayer,
+            WGPUSType_SurfaceSourceAndroidNativeWindow => native::WGPUSurfaceSourceAndroidNativeWindow,
+            WGPUSType_SurfaceSourceSwapChainPanel => native::WGPUSurfaceSourceSwapChainPanel)
+    );
+
+    let surface_id = match create_surface_params {
+        CreateSurfaceParams::Raw((rdh, rwh)) => {
+            match context.instance_create_surface(Some(rdh), rwh, None) {
+                Ok(surface_id) => surface_id,
+                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+            }
+        }
+        #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+        CreateSurfaceParams::Metal(layer) => {
+            match context.instance_create_surface_metal(layer, None) {
+                Ok(surface_id) => surface_id,
+                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+            }
+        }
+        #[cfg(all(target_os = "windows", feature = "dx12"))]
+        CreateSurfaceParams::SwapChainPanel(panel) => {
+            match context.instance_create_surface_from_swap_chain_panel(panel, None) {
+                Ok(surface_id) => surface_id,
+                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+            }
+        }
+    };
+
+    Arc::into_raw(Arc::new(WGPUSurfaceImpl {
+        context: context.clone(),
+        id: surface_id,
+        data: Mutex::default(),
+        has_surface_presented: Arc::default(),
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceProcessEvents(instance: native::WGPUInstance) {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    match context.poll_all_devices(false) {
+        Ok(_queue_empty) => (),
+        Err(cause) => {
+            handle_error_fatal(cause, "wgpuInstanceProcessEvents");
+        }
+    }
+
+    // Livraison des callbacks AllowProcessEvents complétés pendant le poll
+    // (les AllowSpontaneous sont déjà tirées au moment de leur complétion).
+    future::sweep_process_events(context);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
+    instance: native::WGPUInstance,
+    options: Option<&native::WGPURequestAdapterOptions>,
+    callback_info: native::WGPURequestAdapterCallbackInfo,
+) -> native::WGPUFuture {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+    future::validate_callback_mode(callback_info.mode);
+    let callback = callback_info.callback.expect("invalid callback");
+    let userdata = new_userdata!(callback_info);
+
+    // Résolution synchrone côté wgc : la future se complète avant le retour,
+    // le callback est livré selon le mode (AllowSpontaneous → avant retour,
+    // convention historique de ce packer ; GUIDE §5).
+    let future_id = future::register(context, callback_info.mode, Source::Cpu);
+
+    let (desc, inputs) = match options {
+        Some(options) => (
+            wgt::RequestAdapterOptions {
+                power_preference: match options.powerPreference {
+                    native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
+                    native::WGPUPowerPreference_HighPerformance => {
+                        wgt::PowerPreference::HighPerformance
+                    }
+                    _ => wgt::PowerPreference::default(),
+                },
+                force_fallback_adapter: options.forceFallbackAdapter != 0,
+                compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
+                // Pas de knob C pour le limit-bucketing (wgpu 30) — désactivé.
+                apply_limit_buckets: false,
+            },
+            match options.backendType {
+                native::WGPUBackendType_Undefined => wgt::Backends::all(),
+                native::WGPUBackendType_Null => wgt::Backends::empty(),
+                native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
+                native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
+                native::WGPUBackendType_Metal => wgt::Backends::METAL,
+                native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
+                native::WGPUBackendType_OpenGL => wgt::Backends::GL,
+                native::WGPUBackendType_OpenGLES => wgt::Backends::GL,
+                native::WGPUBackendType_D3D11 => {
+                    let message = "unsupported backend type: d3d11".to_string();
+                    future::complete(
+                        future_id,
+                        Box::new(move || {
+                            callback(
+                                native::WGPURequestAdapterStatus_Error,
+                                std::ptr::null_mut(),
+                                str_into_string_view(&message),
+                                userdata.get_1(),
+                                userdata.get_2(),
+                            );
+                        }),
+                    );
+                    return native::WGPUFuture { id: future_id };
+                }
+                backend_type => panic!("invalid backend type: 0x{backend_type:08X}"),
+            },
+        ),
+        None => (wgt::RequestAdapterOptions::default(), wgt::Backends::all()),
+    };
+
+    match context.request_adapter(&desc, inputs, None) {
+        Ok(adapter_id) => {
+            let mut adapter = future::OwnedHandle::new(Arc::into_raw(Arc::new(
+                WGPUAdapterImpl {
+                    context: context.clone(),
+                    id: adapter_id,
+                },
+            )) as *mut WGPUAdapterImpl);
+            future::complete(
+                future_id,
+                Box::new(move || {
+                    callback(
+                        native::WGPURequestAdapterStatus_Success,
+                        adapter.take(),
+                        EMPTY_STRING,
+                        userdata.get_1(),
+                        userdata.get_2(),
+                    );
+                }),
+            );
+        }
+        Err(err) => {
+            let status = match &err {
+                wgt::RequestAdapterError::NotFound {
+                    active_backends: _,
+                    requested_backends: _,
+                    supported_backends: _,
+                    no_fallback_backends: _,
+                    no_adapter_backends: _,
+                    incompatible_surface_backends: _,
+                } => native::WGPURequestAdapterStatus_Unavailable,
+                _ => native::WGPURequestAdapterStatus_Error,
+            };
+            let message = format_error(&err);
+            future::complete(
+                future_id,
+                Box::new(move || {
+                    callback(
+                        status,
+                        std::ptr::null_mut(),
+                        str_into_string_view(&message),
+                        userdata.get_1(),
+                        userdata.get_2(),
+                    );
+                }),
+            );
+        }
+    };
+
+    native::WGPUFuture { id: future_id }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
+    instance: native::WGPUInstance,
+    options: Option<&native::WGPUInstanceEnumerateAdapterOptions>,
+    adapters: *mut native::WGPUAdapter,
+) -> usize {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    let inputs = match options {
+        Some(options) => {
+            map_instance_backend_flags(options.backends as native::WGPUInstanceBackend)
+        }
+        None => wgt::Backends::all(),
+    };
+
+    let result = context.enumerate_adapters(inputs, false /* apply_limit_buckets */);
+    let count = result.len();
+
+    if !adapters.is_null() {
+        let temp = std::slice::from_raw_parts_mut(adapters, count);
+
+        result.iter().enumerate().for_each(|(i, id)| {
+            // It's users responsibility to drop the adapters they
+            // don't need.
+
+            temp[i] = Arc::into_raw(Arc::new(WGPUAdapterImpl {
+                context: context.clone(),
+                id: *id,
+            }));
+        });
+    } else {
+        // Drop all the adapters when only counting length.
+
+        result.iter().for_each(|id| context.adapter_drop(*id));
+    }
+
+    count
+}
+
+/// Granularité de la boucle d'attente temporisée : wgc 29 n'a pas de timeout
+/// sur poll_all_devices (TODO #8286 amont), on poll + sleep.
+const WAIT_POLL_SLEEP: Duration = Duration::from_micros(500);
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceWaitAny(
+    instance: native::WGPUInstance,
+    future_count: usize,
+    futures: *mut native::WGPUFutureWaitInfo,
+    timeout_ns: u64,
+) -> native::WGPUWaitStatus {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    if future_count == 0 {
+        // webgpu.h : (0 future, timeout 0) est l'équivalent documenté de
+        // wgpuInstanceProcessEvents ; un timeout sans aucune future est invalide.
+        if timeout_ns != 0 {
+            log::error!(
+                "wgpuInstanceWaitAny : timeout sans future est invalide \
+                 (timeoutNS > 0 exige des futures et la feature TimedWaitAny)"
+            );
+            return native::WGPUWaitStatus_Error;
+        }
+        match context.poll_all_devices(false) {
+            Ok(_queue_empty) => (),
+            Err(cause) => handle_error_fatal(cause, "wgpuInstanceWaitAny"),
+        }
+        future::sweep_process_events(context);
+        return native::WGPUWaitStatus_Success;
+    }
+
+    if futures.is_null() {
+        log::error!("wgpuInstanceWaitAny : pointeur futures nul avec futureCount > 0");
+        return native::WGPUWaitStatus_Error;
+    }
+    let infos = std::slice::from_raw_parts_mut(futures, future_count);
+    let ids: Vec<u64> = infos.iter().map(|info| info.future.id).collect();
+
+    // Validation sans side-effect : ids non nuls, sans doublon, connus et
+    // possédés par cette instance (une future déjà livrée est inconnue).
+    let sources = match future::wait_set_sources(context, &ids) {
+        Some(sources) => sources,
+        None => {
+            log::error!(
+                "wgpuInstanceWaitAny : future inconnue, déjà consommée, nulle, \
+                 en doublon ou appartenant à une autre instance"
+            );
+            return native::WGPUWaitStatus_Error;
+        }
+    };
+
+    if timeout_ns > 0 {
+        // Attente temporisée : feature TimedWaitAny requise à la création
+        // (timedWaitAnyMaxCount rapporté = usize::MAX, sans limite réelle)
+        // et sources non mixtes : au plus une queue (webgpu.h Mixed Sources).
+        if !instance.timed_wait_any {
+            log::error!(
+                "wgpuInstanceWaitAny : timeoutNS > 0 exige la feature TimedWaitAny \
+                 à la création de l'instance"
+            );
+            return native::WGPUWaitStatus_Error;
+        }
+        let queues: std::collections::HashSet<_> = sources
+            .iter()
+            .filter_map(|source| match source {
+                Source::Queue(queue) => Some(*queue),
+                Source::Cpu => None,
+            })
+            .collect();
+        if queues.len() > 1 {
+            log::error!(
+                "wgpuInstanceWaitAny : attente temporisée invalide — futures \
+                 issues de plusieurs queues (webgpu.h Mixed Sources)"
+            );
+            return native::WGPUWaitStatus_Error;
+        }
+    }
+
+    // webgpu.h : timeoutNS == 0 → les futures sont pollées une fois, sans
+    // blocage. Sinon, échéance (overflow d'un timeout démesuré → infini).
+    let deadline = if timeout_ns == 0 {
+        None
+    } else {
+        Instant::now().checked_add(Duration::from_nanos(timeout_ns))
+    };
+
+    loop {
+        // D'abord les déjà complètes (Ready) ; sinon un poll non bloquant :
+        // les AllowSpontaneous se tirent pendant le poll et leurs ids
+        // remontent via le scope d'attente du thread.
+        let mut payloads = future::take_ready_payloads(&ids);
+        let mut completed: Vec<u64> = payloads.iter().map(|(id, _)| *id).collect();
+
+        if completed.is_empty() {
+            let (poll, notified) = future::run_in_wait_scope(|| context.poll_all_devices(false));
+            match poll {
+                Ok(_queue_empty) => (),
+                Err(cause) => handle_error_fatal(cause, "wgpuInstanceWaitAny"),
+            }
+            completed.extend(notified.into_iter().filter(|id| ids.contains(id)));
+            let mut more = future::take_ready_payloads(&ids);
+            completed.extend(more.iter().map(|(id, _)| *id));
+            payloads.append(&mut more);
+        }
+
+        if !completed.is_empty() {
+            // Succès dès qu'au moins une future complète ; le timeout ne
+            // couvre pas la phase de tir des callbacks (webgpu.h Wait-Any).
+            for info in infos.iter_mut() {
+                if completed.contains(&info.future.id) {
+                    info.completed = 1;
+                }
+            }
+            payloads.into_iter().for_each(|(_, payload)| payload());
+            return native::WGPUWaitStatus_Success;
+        }
+
+        match deadline {
+            _ if timeout_ns == 0 => return native::WGPUWaitStatus_TimedOut,
+            Some(deadline) if Instant::now() >= deadline => {
+                return native::WGPUWaitStatus_TimedOut
+            }
+            _ => std::thread::sleep(WAIT_POLL_SLEEP),
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceAddRef(instance: native::WGPUInstance) {
+    assert!(!instance.is_null(), "invalid instance");
+    Arc::increment_strong_count(instance);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
+    assert!(!instance.is_null(), "invalid instance");
+    Arc::decrement_strong_count(instance);
+}
+
+// wgpu.h functions
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGenerateReport(
+    instance: native::WGPUInstance,
+    native_report: Option<&mut native::WGPUGlobalReport>,
+) {
+    let context = &instance.as_ref().expect("invalid instance").context;
+    let native_report = native_report.expect("invalid return pointer \"native_report\"");
+    conv::write_global_report(native_report, &context.generate_report());
+}

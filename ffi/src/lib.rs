@@ -1,0 +1,26 @@
+#![allow(clippy::missing_safety_doc)]
+
+pub mod api;
+pub mod callbacks;
+pub mod conv;
+pub mod error;
+pub mod ffi_utils;
+pub mod future;
+pub mod logging;
+pub mod native;
+pub mod objects;
+pub mod unimplemented;
+pub mod utils;
+
+pub use api::*;
+pub use error::{Error, ErrorFilter};
+pub use ffi_utils::catch_unwind_contained;
+#[cfg(debug_assertions)]
+pub use ffi_utils::wgpuDebugTriggerPanic;
+pub use logging::*;
+pub use objects::*;
+pub use unimplemented::*;
+
+// Table de résolution de wgpuGetProcAddress, générée par build.rs à partir des
+// headers : elle référence les fonctions ci-dessus par leur nom court.
+include!(concat!(env!("OUT_DIR"), "/procs.rs"));
