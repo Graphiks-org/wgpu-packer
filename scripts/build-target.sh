@@ -68,8 +68,11 @@ python3 tests/checks.py --lib "$LIB"
 # link_main.c + libwgpu_packer.a + the matrix's exact linkLibs.
 # (The Windows runner has no `cc`: the msvc path is covered by
 # scripts/cross-link-test.sh in CI.)
+# The host link test uses `cc`; on the Windows runner `cc` is mingw's gcc,
+# which cannot consume MSVC `.lib` import libraries (d3d12.lib, dxguid.lib).
+# The MSVC path is covered by scripts/cross-link-test.sh, which uses cl.
 HOST_TRIPLE="$(rustc -vV | sed -n 's/host: //p')"
-if [[ "$TRIPLE" == "$HOST_TRIPLE" ]] && command -v cc >/dev/null; then
+if [[ "$TRIPLE" == "$HOST_TRIPLE" ]] && command -v cc >/dev/null && [[ "$TRIPLE" != *-msvc ]]; then
   LINK_LIBS="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['linkLibs'])")"
   cc tests/link_main.c -Iffi/ffi "target/$TRIPLE/release/libwgpu_packer.a" $LINK_LIBS \
      -o /tmp/wgpu_packer_link_test
