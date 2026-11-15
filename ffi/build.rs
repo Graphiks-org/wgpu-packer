@@ -150,7 +150,9 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     }
     // The debug-only probe is compiled out of release builds (see
     // ffi_utils.rs), so exporting it there would be an unresolved symbol.
-    let debug_assertions = env::var("CARGO_CFG_DEBUG_ASSERTIONS").as_deref() == Ok("true");
+    // `CARGO_CFG_DEBUG_ASSERTIONS` is empty in a build script (same reason as
+    // `CARGO_CFG_TARGET_ENV`); PROFILE is "release" for optimized builds.
+    let debug_assertions = env::var("PROFILE").as_deref() != Ok("release");
     if !debug_assertions {
         names.retain(|name| name != "wgpuDebugTriggerPanic");
     }
@@ -173,6 +175,7 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     // unambiguous.
     let def_path = out_path.join("wgpu_packer.def");
     std::fs::write(&def_path, def).expect("writing wgpu_packer.def");
+    println!("cargo:warning=emitting DEF {}", def_path.display());
     println!("cargo:rustc-cdylib-link-arg=/DEF:{}", def_path.display());
 }
 
