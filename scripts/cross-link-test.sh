@@ -54,7 +54,14 @@ if [[ "$CC" == cl ]]; then
   # shellcheck disable=SC2086
   # The import libraries (user32.lib, ...) are linker inputs: they must come
   # after `-link`, which is why the whole command ends with $LINK_LIBS.
-  # LIB must also point at the Windows SDK, which msvc-dev-cmd sets.
+  # `LIB` is not guaranteed to reach the bash shell, so when it is missing the
+  # SDK's um and ucrt directories are located explicitly.
+  if [[ -z "${LIB:-}" ]]; then
+    SDK_LIB="$(ls -d "/c/Program Files (x86)/Windows Kits/10/Lib/"*/ 2>/dev/null | sort -V | tail -1)"
+    if [[ -n "$SDK_LIB" ]]; then
+      export LIB="$(cygpath -w "$SDK_LIB")\um\x64;$(cygpath -w "$SDK_LIB")\ucrt\x64"
+    fi
+  fi
   cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" -Iffi/ffi \
      -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE $LINK_LIBS
 else
