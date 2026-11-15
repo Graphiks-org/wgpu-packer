@@ -180,9 +180,10 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     // `cdylib` + `rlib` together, and a plain `rustc-link-arg` also hits the
     // test binaries ("not a valid Win32 application"). `rustc-link-arg-cdylib`
     // is scoped to the cdylib and carries every export.
-    for name in &names {
-        println!("cargo:rustc-link-arg-cdylib=/EXPORT:{name}");
-    }
+    // A `.def` file passed as a plain linker input is what MSVC actually
+    // honours; `/EXPORT:` per symbol and `rustc-link-arg-cdylib` were both
+    // observed to leave the DLL with a single export.
+    println!("cargo:rustc-link-arg-cdylib={}", def_path.display());
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
