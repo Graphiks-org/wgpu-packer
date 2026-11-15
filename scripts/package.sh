@@ -17,7 +17,7 @@ STAGE="dist/stage/wgpu-$VERSION-$NAME-$KIND"
 rm -rf "$STAGE"
 mkdir -p "$STAGE/include" "$STAGE/lib"
 
-cp ffi/ffi/webgpu.h ffi/ffi/wgpu.h ffi/ffi/wgpu_upstream.h "$STAGE/include/"
+cp ffi/ffi/webgpu.h ffi/ffi/wgpu.h "$STAGE/include/"
 python3 - "$NAME" > "$STAGE/lib/link.txt" <<'EOF'
 import sys
 sys.path.insert(0, "tests")

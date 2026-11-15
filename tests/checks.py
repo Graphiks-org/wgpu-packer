@@ -99,7 +99,7 @@ def main() -> int:
     args = ap.parse_args()
 
     declared = set()
-    for name in ("webgpu.h", "wgpu_upstream.h", "wgpu.h"):
+    for name in ("webgpu.h", "wgpu.h"):
         p = pathlib.Path(args.headers) / name
         if p.exists():
             declared |= parse_declarations(p.read_text())

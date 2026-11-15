@@ -33,7 +33,7 @@ the release and push the tag again, or publish a new `PACKER_VERSION`.
 
 ```bash
 tar xzf wgpu-<version>-<target>-static.tar.gz
-# → include/ (webgpu.h, wgpu_upstream.h, wgpu.h) · lib/ (libwgpu_packer.a, link.txt) · LICENSE* · manifest.json
+# → include/ (webgpu.h, wgpu.h) · lib/ (libwgpu_packer.a, link.txt) · LICENSE* · manifest.json
 ```
 
 ## 2. cinterop
@@ -41,7 +41,8 @@ tar xzf wgpu-<version>-<target>-static.tar.gz
 Copy `packaging/wgpu.def`, point `libraryPaths` at the archive's `lib/`.
 The symbols land in the `wgpu` package (e.g. `wgpu.wgpuCreateInstance`).
 The header to declare is `wgpu.h` — it includes the standard and the
-vendored extensions; never include `wgpu_upstream.h` directly.
+`wgpu.h` is the single header to include: it pulls in `webgpu.h` and
+declares everything the packer adds.
 
 ## 3. Linking
 

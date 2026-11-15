@@ -34,7 +34,6 @@ fi
 printf '%s\n' "$NEW_STATE" > .pin-state
 mkdir -p packaging
 cp third-party/wgpu-native/ffi/webgpu-headers/webgpu.h ffi/ffi/webgpu.h
-cp third-party/wgpu-native/ffi/wgpu.h ffi/ffi/wgpu_upstream.h
 cp third-party/wgpu-native/LICENSE.APACHE packaging/LICENSE-APACHE
 cp third-party/wgpu-native/LICENSE.MIT packaging/LICENSE-MIT
 echo "sync: pins up to date ($NEW_STATE)"
