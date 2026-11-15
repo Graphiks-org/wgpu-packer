@@ -1477,6 +1477,17 @@ extern "C"
 
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
     WGPUAdapter wgpuDeviceGetAdapter(WGPUDevice device);
+    /**
+     * Chainable capabilities struct for wgpuAdapterGetFormatCapabilities.
+     * This packer has no chained capability to report, so the struct carries
+     * only the chain head; the call returns a status.
+     */
+    typedef struct WGPUDawnFormatCapabilities {
+        WGPUChainedStruct * nextInChain;
+    } WGPUDawnFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+    WGPUStatus wgpuAdapterGetFormatCapabilities(WGPUAdapter adapter, WGPUTextureFormat format, WGPUDawnFormatCapabilities * capabilities);
+    WGPUInstance wgpuAdapterGetInstance(WGPUAdapter adapter);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
 
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);

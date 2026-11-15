@@ -222,6 +222,38 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     native::WGPUFuture { id: future_id }
 }
 
+/// Returns the instance this adapter was enumerated from (Dawn's
+/// `wgpuAdapterGetInstance`). The returned handle is a new strong reference
+/// the caller releases with `wgpuInstanceRelease`.
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetInstance(
+    adapter: native::WGPUAdapter,
+) -> native::WGPUInstance {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    Arc::into_raw(adapter.instance.clone()) as native::WGPUInstance
+}
+
+/// Texture-format capabilities of this adapter (Dawn's
+/// `wgpuAdapterGetFormatCapabilities`). The chain is unused by this packer,
+/// so only the status is meaningful; the struct is left untouched.
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetFormatCapabilities(
+    adapter: native::WGPUAdapter,
+    format: native::WGPUTextureFormat,
+    _capabilities: Option<&mut native::WGPUDawnFormatCapabilities>,
+) -> native::WGPUStatus {
+    let adapter_ref = adapter.as_ref().expect("invalid adapter");
+    match conv::map_texture_format(format) {
+        Some(format) => {
+            let _features = adapter_ref
+                .context
+                .adapter_get_texture_format_features(adapter_ref.id, format);
+            native::WGPUStatus_Success
+        }
+        None => native::WGPUStatus_Error,
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterAddRef(adapter: native::WGPUAdapter) {
     assert!(!adapter.is_null(), "invalid adapter");

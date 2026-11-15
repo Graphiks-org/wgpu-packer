@@ -16,6 +16,9 @@ pub type Context = wgc::global::Global;
 pub struct WGPUAdapterImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::AdapterId,
+    /// The instance this adapter was enumerated from (wgpuAdapterGetInstance).
+    /// Held as a strong reference so the instance outlives the adapter.
+    pub(crate) instance: Arc<WGPUInstanceImpl>,
 }
 impl Drop for WGPUAdapterImpl {
     fn drop(&mut self) {

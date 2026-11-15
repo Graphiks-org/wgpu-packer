@@ -215,8 +215,12 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     options: Option<&native::WGPURequestAdapterOptions>,
     callback_info: native::WGPURequestAdapterCallbackInfo,
 ) -> native::WGPUFuture {
-    let instance = instance.as_ref().expect("invalid instance");
-    let context = &instance.context;
+    let instance_ref = instance.as_ref().expect("invalid instance");
+    let context = &instance_ref.context;
+    // Strong reference kept by the adapter so wgpuAdapterGetInstance can hand
+    // it back; released with the adapter.
+    Arc::increment_strong_count(instance);
+    let instance_arc = Arc::from_raw(instance as *const WGPUInstanceImpl);
     future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -278,6 +282,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 WGPUAdapterImpl {
                     context: context.clone(),
                     id: adapter_id,
+                    instance: instance_arc.clone(),
                 },
             )) as *mut WGPUAdapterImpl);
             future::complete(
@@ -330,8 +335,12 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
     options: Option<&native::WGPUInstanceEnumerateAdapterOptions>,
     adapters: *mut native::WGPUAdapter,
 ) -> usize {
-    let instance = instance.as_ref().expect("invalid instance");
-    let context = &instance.context;
+    let instance_ref = instance.as_ref().expect("invalid instance");
+    let context = &instance_ref.context;
+    // Strong reference kept by each adapter so wgpuAdapterGetInstance can
+    // hand it back; released with the adapter.
+    Arc::increment_strong_count(instance);
+    let instance_arc = Arc::from_raw(instance as *const WGPUInstanceImpl);
 
     let inputs = match options {
         Some(options) => {
@@ -353,6 +362,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
             temp[i] = Arc::into_raw(Arc::new(WGPUAdapterImpl {
                 context: context.clone(),
                 id: *id,
+                instance: instance_arc.clone(),
             }));
         });
     } else {
