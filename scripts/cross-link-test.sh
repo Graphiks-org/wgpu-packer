@@ -67,6 +67,14 @@ if [[ "$CC" == cl ]]; then
       done
     done
   fi
+  # The C runtime (LIBCMT, libucrt, ...) lives in the MSVC toolchain, which
+  # `VCToolsInstallDir` locates.
+  if [[ -n "${VCToolsInstallDir:-}" ]] && command -v cygpath >/dev/null; then
+    crt_root="$(cygpath -u "${VCToolsInstallDir}lib\\x64")"
+    for lib in libcmt libucrt libvcruntime libcpmt oldnames; do
+      [[ -f "$crt_root/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$crt_root/$lib.lib")")
+    done
+  fi
   # The matrix lists the SDK libraries by bare name (`user32.lib`), which the
   # linker resolves through LIB. When the explicit paths were found, drop the
   # whole bare-name list: every entry is an SDK import library.
