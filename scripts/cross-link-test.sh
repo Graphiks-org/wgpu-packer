@@ -45,9 +45,12 @@ esac
 
 if [[ "$CC" == cl ]]; then
   # shellcheck disable=SC2086
-  cl //nologo tests/headers_compile.c //Fo:/tmp/wgpu_tu.obj //c //Iffi/ffi
+  # `-I` (not `//I`) for the include path: Git Bash rewrites `//X` to `/X`,
+  # which cl then rejects. `//nologo` and `//link` are safe because cl accepts
+  # `/nologo` and `/link` too.
+  cl -nologo tests/headers_compile.c -Fo:/tmp/wgpu_tu.obj -c -Iffi/ffi
   # shellcheck disable=SC2086
-  cl //nologo tests/link_main.c /tmp/wgpu_tu.obj "$LIB" $LINK_LIBS //Iffi/ffi //Fe:/tmp/wgpu_cross_link.exe //link //SUBSYSTEM:CONSOLE
+  cl -nologo tests/link_main.c /tmp/wgpu_tu.obj "$LIB" $LINK_LIBS -Iffi/ffi -Fe:/tmp/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE
 else
   # shellcheck disable=SC2086
   $CC "${SYSROOT[@]}" -c tests/headers_compile.c -Iffi/ffi -o /tmp/wgpu_tu.o
