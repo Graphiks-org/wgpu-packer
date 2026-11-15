@@ -205,19 +205,21 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
     let surface = surface.as_ref().expect("invalid surface");
     let context = &surface.context;
 
-    let _status = match context.surface_present(surface.id) {
-        Ok(status) => status,
-        Err(cause) => {
-            log::warn!("Presentation error: {}", cause);
-            return native::WGPUStatus_Error;
-        }
-    };
-
+    // The flag is set BEFORE presenting: wgpu-core takes the image away from
+    // the surface during present, so a texture released between the two lines
+    // must not try to discard it. Setting it after left a window where the
+    // drop path called surface_texture_discard on a freed image.
     surface
         .has_surface_presented
         .store(true, atomic::Ordering::SeqCst);
 
-    native::WGPUStatus_Success
+    match context.surface_present(surface.id) {
+        Ok(_status) => native::WGPUStatus_Success,
+        Err(cause) => {
+            log::warn!("Presentation error: {}", cause);
+            native::WGPUStatus_Error
+        }
+    }
 }
 
 #[no_mangle]

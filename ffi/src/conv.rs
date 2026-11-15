@@ -369,6 +369,45 @@ map_enum!(
     AutoFinish
 );
 
+/// Panics when a chained struct the packer cannot honour is present.
+///
+/// Silently ignoring a chain makes the caller believe a limit or an option is
+/// applied. The packer's convention for an unsupported request is to abort
+/// loudly (GUIDE §6), so this keeps the two halves consistent.
+unsafe fn reject_unsupported_chain(
+    mut chain: *const native::WGPUChainedStruct,
+    rejected: &[native::WGPUSType],
+    name: &str,
+) {
+    while let Some(link) = unsafe { chain.as_ref() } {
+        if rejected.contains(&link.sType) {
+            panic!("{name} is not supported by this packer");
+        }
+        chain = link.next;
+    }
+}
+
+/// Maps the DX12 shader-model cap. `WGPUDxcMaxShaderModel_Force32` and any
+/// value above V6_9 leave the choice to wgpu (the default token).
+fn map_dxc_max_shader_model(value: native::WGPUDxcMaxShaderModel) -> wgt::ForceShaderModelToken {
+    use wgt::DxcShaderModel as SM;
+    let model = match value {
+        native::WGPUDxcMaxShaderModel_V6_0 => SM::V6_0,
+        native::WGPUDxcMaxShaderModel_V6_1 => SM::V6_1,
+        native::WGPUDxcMaxShaderModel_V6_2 => SM::V6_2,
+        native::WGPUDxcMaxShaderModel_V6_3 => SM::V6_3,
+        native::WGPUDxcMaxShaderModel_V6_4 => SM::V6_4,
+        native::WGPUDxcMaxShaderModel_V6_5 => SM::V6_5,
+        native::WGPUDxcMaxShaderModel_V6_6 => SM::V6_6,
+        native::WGPUDxcMaxShaderModel_V6_7 => SM::V6_7,
+        _ => return wgt::ForceShaderModelToken::default(),
+    };
+    // SAFETY: the C caller asked for this cap explicitly; wgpu-types documents
+    // the token as "do not use runtime-compiled features the DXC version you
+    // ship does not support", which is the caller's contract to honour.
+    unsafe { wgt::ForceShaderModelToken::with_shader_model(model) }
+}
+
 #[inline]
 pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
@@ -408,6 +447,7 @@ pub unsafe fn map_instance_descriptor(
                 dx12: wgt::Dx12BackendOptions {
                     shader_compiler: dx12_shader_compiler,
                     presentation_system: dx12_presentation_system,
+                    force_shader_model: map_dxc_max_shader_model(extras.dxcMaxShaderModel),
                     ..Default::default()
                 },
                 noop: Default::default(),
@@ -495,6 +535,15 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             )),
             required_limits: match unsafe { des.requiredLimits.as_ref() } {
                 Some(required_limits) => unsafe {
+                    // wgpu-types has no compatibility-profile limit fields, so
+                    // a caller that chains WGPUCompatibilityModeLimits would
+                    // believe the limits are enforced when they are not.
+                    // Reject the chain rather than ignore it.
+                    reject_unsupported_chain(
+                        required_limits.nextInChain,
+                        &[native::WGPUSType_CompatibilityModeLimits],
+                        "WGPUCompatibilityModeLimits",
+                    );
                     follow_chain!(
                         map_required_limits((required_limits, base_limits),
                         WGPUSType_NativeLimits => native::WGPUNativeLimits)
@@ -1246,6 +1295,11 @@ pub fn write_adapter_info(out: &mut native::WGPUAdapterInfo, info: &wgt::Adapter
     out.adapterType = map_adapter_type(info.device_type);
     out.vendorID = info.vendor;
     out.deviceID = info.device;
+    // wgpu-types 30 carries the subgroup size range; report it instead of
+    // leaving whatever the caller had in the struct.
+    out.subgroupMinSize = info.subgroup_min_size;
+    out.subgroupMaxSize = info.subgroup_max_size;
+    // The caller owns nextInChain (it points at its own chained structs).
 }
 
 #[inline]
@@ -1563,6 +1617,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderI16 => Some(Features::SHADER_I16),
         native::WGPUNativeFeature_ShaderEarlyDepthTest => Some(Features::SHADER_EARLY_DEPTH_TEST),
         native::WGPUNativeFeature_Subgroup => Some(Features::SUBGROUP),
+        // webgpu.h spells the same capability WGPUFeatureName_Subgroups.
+        native::WGPUFeatureName_Subgroups => Some(Features::SUBGROUP),
         native::WGPUNativeFeature_SubgroupVertex => Some(Features::SUBGROUP_VERTEX),
         native::WGPUNativeFeature_SubgroupBarrier => Some(Features::SUBGROUP_BARRIER),
         native::WGPUNativeFeature_TimestampQueryInsideEncoders => Some(Features::TIMESTAMP_QUERY_INSIDE_ENCODERS),
@@ -1582,8 +1638,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
         native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
         native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
-        // native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
-        // native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
+        native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
+        native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
         native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
@@ -2031,6 +2087,45 @@ pub unsafe fn map_surface(
     panic!("Error: Unsupported Surface");
 }
 
+/// Maps the WGPUSurfaceColorManagement chain to wgpu-types' color space.
+///
+/// `SRGB` + `Standard` is `Auto`, the wgpu 30 default. `DisplayP3` and
+/// `Extended` tone mapping select the matching wide-gamut space. A request
+/// this packer cannot express is rejected rather than silently downgraded.
+fn map_surface_color_space(chain: *const native::WGPUChainedStruct) -> wgt::SurfaceColorSpace {
+    let mut link = chain;
+    while let Some(current) = unsafe { link.as_ref() } {
+        if current.sType == native::WGPUSType_SurfaceColorManagement {
+            let cm = unsafe {
+                &*(current as *const native::WGPUChainedStruct
+                    as *const native::WGPUSurfaceColorManagement)
+            };
+            return match (cm.colorSpace, cm.toneMappingMode) {
+                (native::WGPUPredefinedColorSpace_SRGB, native::WGPUToneMappingMode_Standard) => {
+                    wgt::SurfaceColorSpace::Auto
+                }
+                (native::WGPUPredefinedColorSpace_SRGB, native::WGPUToneMappingMode_Extended) => {
+                    wgt::SurfaceColorSpace::ExtendedSrgb
+                }
+                (native::WGPUPredefinedColorSpace_DisplayP3, native::WGPUToneMappingMode_Standard) => {
+                    wgt::SurfaceColorSpace::DisplayP3
+                }
+                (native::WGPUPredefinedColorSpace_DisplayP3, native::WGPUToneMappingMode_Extended) => {
+                    // wgpu-types has no "DisplayP3 + extended tone mapping"
+                    // variant; ExtendedSrgb is the closest extended space it
+                    // models, and silently returning sRGB would be worse.
+                    wgt::SurfaceColorSpace::ExtendedSrgb
+                }
+                (space, mode) => {
+                    panic!("unsupported surface color management: {space:?} + {mode:?}")
+                }
+            };
+        }
+        link = current.next;
+    }
+    wgt::SurfaceColorSpace::Auto
+}
+
 #[inline]
 pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
@@ -2040,9 +2135,7 @@ pub fn map_surface_configuration(
         usage: map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
         format: map_texture_format(config.format)
             .expect("invalid format for surface configuration"),
-        // The C chain WGPUSurfaceColorManagement (webgpu.h 29) is not relayed
-        // for now: wgpu 30 default, supported by all formats.
-        color_space: wgt::SurfaceColorSpace::Auto,
+        color_space: map_surface_color_space(config.nextInChain),
         width: config.width,
         height: config.height,
         present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),

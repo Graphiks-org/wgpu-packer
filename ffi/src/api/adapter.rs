@@ -23,22 +23,13 @@ use super::return_features;
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetFeatures(
     adapter: native::WGPUAdapter,
-    features: Option<&mut native::WGPUSupportedFeatures>,
-) -> native::WGPUStatus {
-    let (adapter_id, context, adapter_arc) = {
-        let adapter_ref = adapter.as_ref().expect("invalid adapter");
-        // Strong reference kept by the device so wgpuDeviceGetAdapter can
-        // hand it back; released with the device.
-        Arc::increment_strong_count(adapter);
-        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
-        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
-    };
-    let adapter_features = context.adapter_features(adapter_id);
-    let features = features.expect("invalid return pointer \"features\"");
+    features: *mut native::WGPUSupportedFeatures,
+) {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let adapter_features = adapter.context.adapter_features(adapter.id);
+    let features = features.as_mut().expect("invalid return pointer \"features\"");
 
     return_features(features, adapter_features);
-
-    native::WGPUStatus_Success
 }
 
 #[no_mangle]
@@ -59,7 +50,10 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
     let wgt_limits = context.adapter_limits(adapter_id);
     conv::write_limits_struct(wgt_limits, limits);
 
-    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
+    // The return value means "the chained WGPUChainedStructOut entries were
+    // filled". This packer fills none: write_limits_struct only writes the
+    // NativeLimits link when the caller already chained it. Report that.
+    false as native::WGPUBool
 }
 
 #[no_mangle]

@@ -27,13 +27,16 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     // requiredFeatures must be a subset of the supported features —
     // panic otherwise, as for any invalid enum value elsewhere.
     // TimedWaitAny enabled here allows wgpuInstanceWaitAny with timeoutNS > 0.
+    // webgpu.h: an unsupported required feature makes the call return NULL.
+    // There is no error sink yet at this point, so a log is the only report.
     let timed_wait_any = match descriptor {
         Some(descriptor) => {
             let required =
                 make_slice(descriptor.requiredFeatures, descriptor.requiredFeatureCount);
             for feature in required {
                 if !SUPPORTED_INSTANCE_FEATURES.contains(feature) {
-                    panic!("Unsupported instance feature: {feature}");
+                    log::error!("wgpuCreateInstance: unsupported instance feature {feature}");
+                    return std::ptr::null_mut();
                 }
             }
             required.contains(&native::WGPUInstanceFeatureName_TimedWaitAny)

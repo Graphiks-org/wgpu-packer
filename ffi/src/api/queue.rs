@@ -98,13 +98,16 @@ pub unsafe extern "C" fn wgpuQueueGetNativeMetalCommandQueue(
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     {
         let queue = queue.as_ref().expect("invalid queue");
-        // wgpu-hal v29 no longer exposes a public accessor for the raw
-        // MTLCommandQueue. Return null until upstream adds one back.
-        log::warn!(
-            "wgpuQueueGetNativeMetalCommandQueue: not available in current wgpu-hal version"
-        );
-        let _ = queue;
-        std::ptr::null_mut()
+        // wgpu-hal 30 exposes `Queue::as_raw()` (metal/mod.rs), reached through
+        // wgpu-core's `queue_as_hal`.
+        let hal_queue =
+            unsafe { queue.queue.context.queue_as_hal::<hal::api::Metal>(queue.queue.id) };
+        match hal_queue {
+            Some(hal_queue) => {
+                &*hal_queue.as_raw() as *const _ as *mut c_void
+            }
+            None => std::ptr::null_mut(),
+        }
     }
     #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
     {
@@ -195,12 +198,14 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 
     match context.queue_submit(queue_id, &command_buffers) {
         Ok(submission_index) => submission_index,
-        // WebGPU semantics: error delivered to the sink (scope or uncaptured
-        // handler), the call returns. The index reserved before validation
-        // is still returned — that is the role of the queue_submit error tuple.
+        // WebGPU semantics: the error goes to the sink (scope or uncaptured
+        // handler) and the call returns. The index reserved before validation
+        // is NOT returned: nothing was submitted, so waiting on it would make
+        // wgpuDevicePoll fail with WrongSubmissionIndex and report nothing.
+        // Returning 0 tells the consumer the submit did not happen.
         Err(cause) => {
             handle_error(error_sink, cause.1, None, "wgpuQueueSubmitForIndex");
-            cause.0
+            0
         }
     }
 }

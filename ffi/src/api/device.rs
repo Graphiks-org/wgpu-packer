@@ -422,17 +422,27 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     };
 
     // device=None: device-dependent validation is deferred to finish()
-    // (wgc 29 behavior preserved).
-    match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
-        Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
-            context: context.clone(),
-            encoder: Box::into_raw(Box::new(Some(Box::into_raw(Box::new(encoder))))),
-            error_sink: error_sink.clone(),
-        })),
+    // (wgc 29 behavior preserved). Descriptor validation still runs here, and
+    // its errors go to the device sink like every other wgpuDeviceCreate*:
+    // the C contract returns a handle, it does not abort.
+    let encoder = match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
+        Ok(encoder) => Some(Box::into_raw(Box::new(encoder))),
         Err(cause) => {
-            handle_error_fatal(cause, "wgpuDeviceCreateRenderBundleEncoder");
+            handle_error(
+                error_sink,
+                cause,
+                desc.label,
+                "wgpuDeviceCreateRenderBundleEncoder",
+            );
+            None
         }
-    }
+    };
+
+    Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
+        context: context.clone(),
+        encoder: Box::into_raw(Box::new(encoder)),
+        error_sink: error_sink.clone(),
+    }))
 }
 
 /// C -> wgc mapping of the render pipeline descriptor, shared by the
@@ -993,18 +1003,13 @@ pub unsafe extern "C" fn wgpuDeviceDestroy(device: native::WGPUDevice) {
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetFeatures(
     device: native::WGPUDevice,
-    features: Option<&mut native::WGPUSupportedFeatures>,
-) -> native::WGPUStatus {
-    let (device_id, context) = {
-        let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context)
-    };
-    let device_features = context.device_features(device_id);
-    let features = features.expect("invalid return pointer \"features\"");
+    features: *mut native::WGPUSupportedFeatures,
+) {
+    let device = device.as_ref().expect("invalid device");
+    let device_features = device.context.device_features(device.id);
+    let features = features.as_mut().expect("invalid return pointer \"features\"");
 
     return_features(features, device_features);
-
-    native::WGPUStatus_Success
 }
 
 #[no_mangle]
@@ -1018,11 +1023,25 @@ pub unsafe extern "C" fn wgpuDeviceStartGraphicsDebuggerCapture(
 
     // wgpu-core's `device_start_graphics_debugger_capture` returns nothing: it
     // discards the backend's `bool` (wgpu-hal reports whether the capture
-    // actually started). The C API can therefore only report that the call was
-    // made, not that a capture is running. Returning true is the documented
-    // behaviour of this packer (GUID §6).
-    context.device_start_graphics_debugger_capture(device_id);
-    true
+    // actually started). The C API promises that bool, so the call goes
+    // straight to wgpu-hal through `device_as_hal`, the only way to report a
+    // real answer.
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    {
+        use hal::Device as _;
+        let hal_device = context.device_as_hal::<hal::api::Metal>(device_id);
+        if let Some(hal_device) = hal_device {
+            return unsafe { hal_device.start_graphics_debugger_capture() };
+        }
+        return false;
+    }
+    #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
+    {
+        context.device_start_graphics_debugger_capture(device_id);
+        // No backend exposes a start result here: report that the capture did
+        // not start rather than claiming it did.
+        false
+    }
 }
 
 #[no_mangle]
@@ -1049,7 +1068,10 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
     let wgt_limits = context.device_limits(device_id);
     conv::write_limits_struct(wgt_limits, limits);
 
-    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
+    // The return value means "the chained WGPUChainedStructOut entries were
+    // filled". This packer fills none: write_limits_struct only writes the
+    // NativeLimits link when the caller already chained it. Report that.
+    false as native::WGPUBool
 }
 
 #[no_mangle]
