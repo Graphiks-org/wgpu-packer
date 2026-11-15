@@ -163,7 +163,9 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     // Linux/macOS rejects it ("unknown directive: LIBRARY"). And only the
     // cdylib needs it: feeding it to the test binaries or the staticlib makes
     // link.exe reject it (LNK1107).
-    if env::var("CARGO_CFG_TARGET_ENV").as_deref() != Ok("msvc") {
+    // `CARGO_CFG_TARGET_ENV` is empty for a build script; the target triple is
+    // what identifies MSVC here.
+    if !env::var("TARGET").unwrap_or_default().ends_with("-msvc") {
         return;
     }
     // `/DEF:` rather than a bare path: a bare `.def` argument is not a linker

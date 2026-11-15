@@ -180,7 +180,7 @@
       "linkages": [
         "static"
       ],
-      "linkLibs": "-llog -landroid",
+      "linkLibs": "-llog -landroid -lm -ldl",
       "deployEnv": {
         "ANDROID_API": "24"
       },
@@ -202,7 +202,7 @@
       "linkages": [
         "static"
       ],
-      "linkLibs": "-llog -landroid",
+      "linkLibs": "-llog -landroid -lm -ldl",
       "deployEnv": {
         "ANDROID_API": "24"
       },
