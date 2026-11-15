@@ -137,7 +137,13 @@ fn main() {
 /// linker needs a module-definition file (or one `/EXPORT:` per symbol).
 /// Generate it from the same declaration scan the proc table uses, so the DLL
 /// exports exactly what the headers declare.
-fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
+fn write_msvc_exports(_out_path: &PathBuf, manifest_dir: &PathBuf) {
+    // Only MSVC needs this; lld on Linux/macOS exports `#[no_mangle]` symbols
+    // on its own. `CARGO_CFG_TARGET_ENV` is empty in a build script, so the
+    // target triple identifies MSVC.
+    if !env::var("TARGET").unwrap_or_default().ends_with("-msvc") {
+        return;
+    }
     let mut names: Vec<String> = Vec::new();
     for header in ["webgpu.h", "wgpu_upstream.h", "wgpu.h"] {
         let text = std::fs::read_to_string(manifest_dir.join("ffi").join(header))
@@ -149,41 +155,18 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
         }
     }
     // The debug-only probe is compiled out of release builds (see
-    // ffi_utils.rs), so exporting it there would be an unresolved symbol.
-    // `CARGO_CFG_DEBUG_ASSERTIONS` is empty in a build script (same reason as
-    // `CARGO_CFG_TARGET_ENV`); PROFILE is "release" for optimized builds.
-    let debug_assertions = env::var("PROFILE").as_deref() != Ok("release");
-    if !debug_assertions {
+    // ffi_utils.rs); exporting it there would be an unresolved symbol.
+    // `CARGO_CFG_DEBUG_ASSERTIONS` is empty in a build script, PROFILE is not.
+    if env::var("PROFILE").as_deref() == Ok("release") {
         names.retain(|name| name != "wgpuDebugTriggerPanic");
     }
     names.sort();
-    let mut def = String::from("LIBRARY wgpu_packer\nEXPORTS\n");
+    // One `/EXPORT:` per declared symbol. A `.def` file is the other route,
+    // but as a linker input it also reaches the test binaries and corrupts
+    // them (LNK1107); `rustc-link-arg-cdylib` keeps it on the DLL.
     for name in &names {
-        def.push_str(&format!("    {name}\n"));
+        println!("cargo:rustc-link-arg-cdylib=/EXPORT:{name}");
     }
-    // Only MSVC's linker understands a .def module-definition file; lld on
-    // Linux/macOS rejects it ("unknown directive: LIBRARY"). And only the
-    // cdylib needs it: feeding it to the test binaries or the staticlib makes
-    // link.exe reject it (LNK1107).
-    // `CARGO_CFG_TARGET_ENV` is empty for a build script; the target triple is
-    // what identifies MSVC here.
-    if !env::var("TARGET").unwrap_or_default().ends_with("-msvc") {
-        return;
-    }
-    // `/DEF:` rather than a bare path: a bare `.def` argument is not a linker
-    // input file to link.exe in every invocation (LNK1107), while `/DEF:` is
-    // unambiguous.
-    let def_path = out_path.join("wgpu_packer.def");
-    std::fs::write(&def_path, def).expect("writing wgpu_packer.def");
-    // Emit one `/EXPORT:` per symbol rather than a `.def` file. The `.def`
-    // route does not reach the linker of a crate that builds `staticlib` +
-    // `cdylib` + `rlib` together, and a plain `rustc-link-arg` also hits the
-    // test binaries ("not a valid Win32 application"). `rustc-link-arg-cdylib`
-    // is scoped to the cdylib and carries every export.
-    // A `.def` file passed as a plain linker input is what MSVC actually
-    // honours; `/EXPORT:` per symbol and `rustc-link-arg-cdylib` were both
-    // observed to leave the DLL with a single export.
-    println!("cargo:rustc-link-arg-cdylib={}", def_path.display());
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
