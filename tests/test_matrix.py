@@ -19,7 +19,7 @@ class Matrix(unittest.TestCase):
         self.assertEqual(len(v1), 10)
 
     def test_android_targets_are_static_only(self):
-        # docs/spikes/android.md only proves the static mode (see "Limitations").
+        # The Android targets ship the static linkage only.
         for t in matrix.load()["targets"]:
             if t["os"] == "android":
                 self.assertEqual(t["linkages"], ["static"], t["kotlinTarget"])
