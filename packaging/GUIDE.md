@@ -113,11 +113,11 @@ Android: `-llog -landroid` · Windows: `user32 gdi32 dxgi d3d12`.
 ## 6. Unimplemented functions (call = abort)
 
 These symbols are exported but raise `unimplemented!()` (panic) when called
-in v30.0.1.0 — do not call them from Kotlin. 6 stubs; the reasons are
+in v30.0.1.0 — do not call them from Kotlin. 5 stubs; the reasons are
 detailed in `ffi/src/unimplemented.rs`:
 
 wgpuInstanceGetWGSLLanguageFeatures, wgpuInstanceHasWGSLLanguageFeature,
-wgpuSupportedWGSLLanguageFeaturesFreeMembers, wgpuShaderModuleGetCompilationInfo,
+wgpuSupportedWGSLLanguageFeaturesFreeMembers,
 wgpuExternalTextureAddRef, wgpuExternalTextureRelease.
 
 Note:

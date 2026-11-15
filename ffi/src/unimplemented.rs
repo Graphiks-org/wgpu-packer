@@ -5,8 +5,6 @@
 //! - `wgpuInstanceGetWGSLLanguageFeatures` / `wgpuInstanceHasWGSLLanguageFeature`
 //!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgt/naga 29 API
 //!   listing the supported WGSL language features.
-//! - `wgpuShaderModuleGetCompilationInfo`: wgc 29 does not keep the
-//!   compilation messages of shader modules (also absent from 29.0.3).
 //! - `wgpuExternalTextureAddRef` / `wgpuExternalTextureRelease`: type
 //!   that cannot be ref-counted through the ABI — webgpu.h: "Creation of WGPUExternalTexture is
 //!   extremely implementation-dependent and not defined in this header"
@@ -34,14 +32,6 @@ pub extern "C" fn wgpuInstanceHasWGSLLanguageFeature(
 pub extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     _supported_wgsl_language_features: native::WGPUSupportedWGSLLanguageFeatures,
 ) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuShaderModuleGetCompilationInfo(
-    _shader_module: native::WGPUShaderModule,
-    _callback: native::WGPUCompilationInfoCallbackInfo,
-) -> native::WGPUFuture {
     unimplemented!();
 }
 

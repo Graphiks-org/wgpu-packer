@@ -798,6 +798,7 @@ unsafe fn create_shader_module_impl(
             return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
                 context: context.clone(),
                 id: None,
+                messages: Vec::new(),
             }));
         }
     };
@@ -809,6 +810,13 @@ unsafe fn create_shader_module_impl(
 
     let (shader_module_id, error) =
         context.device_create_shader_module(device_id, &desc, source, None);
+    // webgpu.h: the diagnostics of a module are what
+    // wgpuShaderModuleGetCompilationInfo reports. wgpu-core hands them out
+    // once, at creation, so they are kept on the module.
+    let messages = match &error {
+        Some(cause) => compilation_messages(cause),
+        None => Vec::new(),
+    };
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, fn_ident);
     }
@@ -816,7 +824,51 @@ unsafe fn create_shader_module_impl(
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: Some(shader_module_id),
+        messages,
     }))
+}
+
+/// Turns a wgpu-core shader creation error into the diagnostics webgpu.h
+/// reports. naga carries the source and the labels, so line and column come
+/// from the span; a variant without spans yields one message at 0:0.
+fn compilation_messages(
+    cause: &wgc::pipeline::CreateShaderModuleError,
+) -> Vec<crate::objects::CompilationMessage> {
+    use wgc::pipeline::CreateShaderModuleError as E;
+
+    let error_type = native::WGPUCompilationMessageType_Error;
+    let simple = |text: String| {
+        vec![crate::objects::CompilationMessage {
+            message: text,
+            message_type: error_type,
+            line_num: 0,
+            line_pos: 0,
+            offset: 0,
+            length: 0,
+        }]
+    };
+
+    match cause {
+        E::Parsing(shader_error) => {
+            let source = &shader_error.source;
+            shader_error
+                .inner
+                .labels()
+                .map(|(span, label)| {
+                    let location = span.location(source);
+                    crate::objects::CompilationMessage {
+                        message: label.to_string(),
+                        message_type: error_type,
+                        line_num: location.line_number as u64,
+                        line_pos: location.line_position as u64,
+                        offset: location.offset as u64,
+                        length: location.length as u64,
+                    }
+                })
+                .collect()
+        }
+        other => simple(other.to_string()),
+    }
 }
 
 #[no_mangle]
@@ -1281,6 +1333,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 
     let (shader_module_id, error) =
         context.device_create_shader_module_passthrough(device_id, &desc, None);
+    let messages = match &error {
+        Some(cause) => compilation_messages(cause),
+        None => Vec::new(),
+    };
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -1293,5 +1349,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: Some(shader_module_id),
+        messages,
     }))
 }

@@ -329,6 +329,20 @@ impl Drop for WGPUSamplerImpl {
 pub struct WGPUShaderModuleImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: Option<id::ShaderModuleId>,
+    /// Diagnostics produced when the module was created, kept so
+    /// `wgpuShaderModuleGetCompilationInfo` can report them. Empty for a
+    /// module that compiled cleanly.
+    pub(crate) messages: Vec<CompilationMessage>,
+}
+
+/// One diagnostic of a shader module, in the shape webgpu.h expects.
+pub struct CompilationMessage {
+    pub message: String,
+    pub message_type: native::WGPUCompilationMessageType,
+    pub line_num: u64,
+    pub line_pos: u64,
+    pub offset: u64,
+    pub length: u64,
 }
 impl Drop for WGPUShaderModuleImpl {
     fn drop(&mut self) {
