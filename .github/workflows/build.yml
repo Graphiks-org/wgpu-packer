@@ -91,11 +91,7 @@ jobs:
           echo "using NDK: $ndk"
           echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
       - if: matrix.target == 'windowsMsvcX64'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          # The Windows SDK import libraries (user32.lib, d3d12.lib, ...) are
-          # only found when LIB points at them.
-          sdk: true
+        uses: ilammy/msvc-dev-cmd@v1 # MSVC linker, LIB and dumpbin in PATH
       - if: matrix.target == 'windowsMsvcX64'
         # Git for Windows ships its own /usr/bin/link.exe (a coreutils clone),
         # which shadows MSVC's link.exe when cargo resolves the linker by name.
