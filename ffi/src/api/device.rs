@@ -214,10 +214,10 @@ unsafe fn map_compute_pipeline_descriptor(
                 )
             })
             .collect(),
-            // TODO(wgpu.h)
+            // No C knob for this yet: the WGSL spec default is false.
             zero_initialize_workgroup_memory: false,
         },
-        // TODO(wgpu.h)
+        // No C knob for a pipeline cache yet: every device starts without one.
         cache: None,
     }
 }
@@ -462,7 +462,7 @@ unsafe fn map_render_pipeline_descriptor(
                         )
                     })
                     .collect(),
-                // TODO(wgpu.h)
+                // No C knob for this yet: the WGSL spec default is false.
                 zero_initialize_workgroup_memory: false,
             },
             buffers: Cow::Owned(
@@ -524,7 +524,11 @@ unsafe fn map_render_pipeline_descriptor(
             wgt::DepthStencilState {
                 format,
                 depth_write_enabled: Some(desc.depthWriteEnabled == native::WGPUOptionalBool_True),
-                // TODO: Is validation correct if we return always for undefined depth compare?
+                // `WGPUCompareFunction_Undefined` is legal in webgpu.h: the
+                // spec requires depthCompare only when depthWriteEnabled is
+                // true or a stencil depthFailOp is not "keep". wgpu-core has
+                // no undefined variant, so it maps to Always, which is the
+                // identity of the comparison (every fragment passes).
                 depth_compare: Some(
                     conv::map_compare_function(desc.depthCompare)
                         .expect("invalid depth compare function for depth stencil state")
@@ -569,7 +573,7 @@ unsafe fn map_render_pipeline_descriptor(
                             )
                         })
                         .collect(),
-                    // TODO(wgpu.h)
+                    // No C knob for this yet: the WGSL spec default is false.
                     zero_initialize_workgroup_memory: false,
                 },
                 targets: Cow::Owned(
@@ -592,9 +596,9 @@ unsafe fn map_render_pipeline_descriptor(
                         .collect(),
                 ),
             }),
-        // TODO(wgpu.h)
+        // No C knob for a multiview mask yet: every pipeline renders all views.
         multiview_mask: None,
-        // TODO(wgpu.h)
+        // No C knob for a pipeline cache yet: every device starts without one.
         cache: None,
     }
 }
@@ -960,7 +964,11 @@ pub unsafe extern "C" fn wgpuDeviceStartGraphicsDebuggerCapture(
         (device.id, &device.context)
     };
 
-    // FIXME: wgpu-hal's start_graphics_debugger_capture returns a bool, but wgpu's doesn't
+    // wgpu-core's `device_start_graphics_debugger_capture` returns nothing: it
+    // discards the backend's `bool` (wgpu-hal reports whether the capture
+    // actually started). The C API can therefore only report that the call was
+    // made, not that a capture is running. Returning true is the documented
+    // behaviour of this packer (GUID §6).
     context.device_start_graphics_debugger_capture(device_id);
     true
 }
@@ -1196,7 +1204,15 @@ pub unsafe extern "C" fn wgpuDeviceRelease(device: native::WGPUDevice) {
     Arc::decrement_strong_count(device);
 }
 
-// FIXME: rework this function to match how wgpu v27 handles polling devices
+/// Polls the device, `wgpu-native`'s extension to the standard API.
+///
+/// `wait` selects between a non-blocking poll and a wait; `submissionIndex`
+/// narrows the wait to one submission. Returns true when the queue is empty.
+///
+/// wgpu-core returns three states (`QueueEmpty`, `WaitSucceeded`,
+/// `PollFailed`); the C API is a boolean, so `QueueEmpty` maps to true and the
+/// other two to false. A poll error is delivered to the error sink (it is how
+/// device loss surfaces) and never aborts.
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDevicePoll(
     device: native::WGPUDevice,
@@ -1233,7 +1249,12 @@ pub unsafe extern "C" fn wgpuDevicePoll(
     }
 }
 
-// FIXME: wgpu has generic shader passthrough now, we should be doing something similar
+/// Creates a shader module from SPIR-V source, `wgpu-native`'s extension.
+///
+/// wgpu-core has a generic passthrough path
+/// (`device_create_shader_module_passthrough`) that takes the source language
+/// as data; this entry point is the SPIR-V one, and
+/// `wgpuDeviceCreateShaderModuleTrusted` is the WGSL one.
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     device: native::WGPUDevice,

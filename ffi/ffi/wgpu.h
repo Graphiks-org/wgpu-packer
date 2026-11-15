@@ -747,6 +747,30 @@ typedef enum WGPUNativeFeature
      */
     WGPUNativeFeature_MemoryDecorationVolatile = 0x00030040,
 
+    /**
+     * Enables external textures (video frames imported from the platform).
+     * wgpu-core declares the feature; this packer does not expose the
+     * creation entry point yet.
+     */
+    WGPUNativeFeature_ExternalTexture = 0x00030041,
+    /** Vulkan: VK_GOOGLE_display_timing. */
+    WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x00030042,
+    /** Vulkan: VK_KHR_external_memory_win32. */
+    WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x00030043,
+    /** Uniform buffer binding arrays. */
+    WGPUNativeFeature_UniformBufferBindingArrays = 0x00030044,
+    /** Experimental mesh shaders. */
+    WGPUNativeFeature_MeshShader = 0x00030045,
+    /** Experimental ray-hit vertex return. */
+    WGPUNativeFeature_RayHitVertexReturn = 0x00030046,
+    /** Experimental mesh shader multiview. */
+    WGPUNativeFeature_MeshShaderMultiview = 0x00030047,
+    /** Extended acceleration-structure vertex formats. */
+    WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030048,
+    /** Passthrough shaders (SPIR-V / HLSL / MSL source). */
+    WGPUNativeFeature_PassthroughShaders = 0x00030049,
+    /** Experimental mesh shader points. */
+    WGPUNativeFeature_MeshShaderPoints = 0x0003004A,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 

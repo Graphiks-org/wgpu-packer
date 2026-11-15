@@ -374,8 +374,8 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
     count
 }
 
-/// Granularity of the timed wait loop: wgc 29 has no timeout
-/// on poll_all_devices (upstream TODO #8286), so we poll + sleep.
+/// Granularity of the timed wait loop. wgpu-core's `poll_all_devices` has no
+/// timeout parameter, so a timed wait polls and sleeps until the deadline.
 const WAIT_POLL_SLEEP: Duration = Duration::from_micros(500);
 
 #[no_mangle]
@@ -393,8 +393,8 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
         // wgpuInstanceProcessEvents; a timeout without any future is invalid.
         if timeout_ns != 0 {
             log::error!(
-                "wgpuInstanceWaitAny : timeout sans future est invalide \
-                 (timeoutNS > 0 exige des futures et la feature TimedWaitAny)"
+                "wgpuInstanceWaitAny: a timeout without any future is invalid \
+                 (timeoutNS > 0 requires futures and the TimedWaitAny feature)"
             );
             return native::WGPUWaitStatus_Error;
         }

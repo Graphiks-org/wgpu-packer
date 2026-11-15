@@ -11,8 +11,9 @@ pub unsafe extern "C" fn wgpuQuerySetDestroy(query_set: native::WGPUQuerySet) {
         (query_set.id, &query_set.context)
     };
 
-    // FIXME: we shouldn't be using drop to implement this!
-    context.query_set_drop(query_set_id);
+    // Destroy, not drop: the handle stays alive until the consumer releases
+    // it, exactly like wgpuTextureDestroy (wgpu-core keeps the two apart).
+    context.query_set_destroy(query_set_id);
 }
 
 #[no_mangle]

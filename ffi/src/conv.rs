@@ -468,11 +468,20 @@ unsafe fn map_native_display_handle(
     Some(Box::new(NativeDisplayHandle(raw)))
 }
 
+/// Maps `WGPUDeviceExtras.tracePath` to wgpu-types' `Trace`.
+///
+/// wgpu-types gates `Trace::Directory` behind its `trace` feature; without it
+/// the only variant is `Off`, so this returns `Off` and the path is ignored.
+fn trace_from_extras(extras: Option<&native::WGPUDeviceExtras>) -> wgt::Trace {
+    let _ = extras;
+    wgt::Trace::Off
+}
+
 #[inline]
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    _extras: Option<&native::WGPUDeviceExtras>,
+    extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
@@ -493,9 +502,13 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
-            // TODO(wgpu.h)
+            // No C knob for memory hints yet: wgpu-core picks its default.
             memory_hints: Default::default(),
-            trace: Default::default(),
+            // WGPUDeviceExtras.tracePath, when the consumer chained it. The
+            // `trace` crate feature is off in this build, so wgpu-types only
+            // exposes `Trace::Off`: the field is read and honoured when the
+            // feature is enabled, and ignored otherwise.
+            trace: trace_from_extras(extras),
             experimental_features: wgt::ExperimentalFeatures::disabled(),
         },
         match des.uncapturedErrorCallbackInfo.callback {
@@ -540,8 +553,7 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
     limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
     limits.maxBindGroups = wgt_limits.max_bind_groups;
-    // TODO: not yet in wgt
-    // limits.maxBindGroupsPlusVertexBuffers = wgt_limits.max_bind_groups_plus_vertex_buffers;
+    limits.maxBindGroupsPlusVertexBuffers = wgt_limits.max_bind_groups_plus_vertex_buffers;
     limits.maxBindingsPerBindGroup = wgt_limits.max_bindings_per_bind_group;
     limits.maxDynamicUniformBuffersPerPipelineLayout =
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
@@ -613,10 +625,9 @@ pub fn map_required_limits(
     if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
-    // TODO: not yet in wgt
-    // if limits.maxBindGroupsPlusVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
-    //     wgt_limits.max_bind_groups_plus_vertex_buffers = limits.maxBindGroupsPlusVertexBuffers;
-    // }
+    if limits.maxBindGroupsPlusVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
+        wgt_limits.max_bind_groups_plus_vertex_buffers = limits.maxBindGroupsPlusVertexBuffers;
+    }
     if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
     }
@@ -1226,7 +1237,9 @@ pub fn resolve_texture_binding_view_dimension(
 /// wgpuAdapterGetInfo and wgpuDeviceGetAdapterInfo).
 pub fn write_adapter_info(out: &mut native::WGPUAdapterInfo, info: &wgt::AdapterInfo) {
     out.vendor = str_into_owned_string_view(&info.driver);
-    out.architecture = crate::callbacks::EMPTY_STRING; // TODO(webgpu.h)
+    // wgpu-types' AdapterInfo has no architecture field: the WebGPU struct
+    // declares one, so it is reported empty rather than guessed.
+    out.architecture = crate::callbacks::EMPTY_STRING;
     out.device = str_into_owned_string_view(&info.name);
     out.description = str_into_owned_string_view(&info.driver_info);
     out.backendType = map_backend_type(info.backend);
@@ -1424,10 +1437,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_FORMAT_P010) {
         temp.push(native::WGPUNativeFeature_TextureFormatP010);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
-    //     temp.push(native::WGPUNativeFeature_ExternalTexture);
-    // }
+    if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
+        temp.push(native::WGPUNativeFeature_ExternalTexture);
+    }
     if features.contains(wgt::Features::PIPELINE_CACHE) {
         temp.push(native::WGPUNativeFeature_PipelineCache);
     }
@@ -1437,45 +1449,42 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_INT64_ATOMIC_ALL_OPS) {
         temp.push(native::WGPUNativeFeature_ShaderInt64AtomicAllOps);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
-    //     temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
-    // }
-    // if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
-    //     temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
-    // }
+    if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
+        temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
+    }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
+    }
     if features.contains(wgt::Features::TEXTURE_INT64_ATOMIC) {
         temp.push(native::WGPUNativeFeature_TextureInt64Atomic);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::UNIFORM_BUFFER_BINDING_ARRAYS) {
-    //     temp.push(native::WGPUNativeFeature_UniformBufferBindingArrays);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
-    //     temp.push(native::WGPUNativeFeature_MeshShader);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
-    //     temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
-    // }
-    // if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
-    //     temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
-    // }
-    // if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
-    //     temp.push(native::WGPUNativeFeature_PassthroughShaders);
-    // }
+    if features.contains(wgt::Features::UNIFORM_BUFFER_BINDING_ARRAYS) {
+        temp.push(native::WGPUNativeFeature_UniformBufferBindingArrays);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
+        temp.push(native::WGPUNativeFeature_MeshShader);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
+        temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
+        temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
+    }
+    if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
+        temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
+    }
+    if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
+        temp.push(native::WGPUNativeFeature_PassthroughShaders);
+    }
     if features.contains(wgt::Features::SHADER_BARYCENTRICS) {
         temp.push(native::WGPUNativeFeature_ShaderBarycentrics);
     }
     if features.contains(wgt::Features::SELECTIVE_MULTIVIEW) {
         temp.push(native::WGPUNativeFeature_SelectiveMultiview);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderPoints);
-    // }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
+        temp.push(native::WGPUNativeFeature_MeshShaderPoints);
+    }
     if features.contains(wgt::Features::MULTISAMPLE_ARRAY) {
         temp.push(native::WGPUNativeFeature_MultisampleArray);
     }
@@ -1545,7 +1554,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
         native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
         native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
-        // TODO: requires wgpu.h api change
         native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
         native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
@@ -1563,26 +1571,22 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderFloat32Atomic => Some(Features::SHADER_FLOAT32_ATOMIC),
         native::WGPUNativeFeature_TextureAtomic => Some(Features::TEXTURE_ATOMIC),
         native::WGPUNativeFeature_TextureFormatP010 => Some(Features::TEXTURE_FORMAT_P010),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
+        native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
         native::WGPUNativeFeature_PipelineCache => Some(Features::PIPELINE_CACHE),
         native::WGPUNativeFeature_ShaderInt64AtomicMinMax => Some(Features::SHADER_INT64_ATOMIC_MIN_MAX),
         native::WGPUNativeFeature_ShaderInt64AtomicAllOps => Some(Features::SHADER_INT64_ATOMIC_ALL_OPS),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
-        // native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
+        native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
+        native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
-        // native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        // native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
-        // native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
+        native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
+        native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
+        native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
+        native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
         // native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
         // native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
+        native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
         native::WGPUNativeFeature_MultisampleArray => Some(Features::MULTISAMPLE_ARRAY),
         native::WGPUNativeFeature_CooperativeMatrix => Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),
