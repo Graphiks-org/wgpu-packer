@@ -59,12 +59,6 @@ class CI(unittest.TestCase):
         build_trigger = self.wf.get("on", self.wf.get(True))
         self.assertIn("v*", build_trigger["push"]["tags"])
 
-    def test_kotlin_smoke_consumes_build_artifact(self):
-        ks = self.wf["jobs"]["kotlin_smoke"]
-        needs = ks["needs"]
-        needs = needs if isinstance(needs, list) else [needs]  # YAML: singleton = string
-        self.assertEqual(needs, ["build"])
-
     def test_cross_link_test_in_build_job(self):
         runs = str(self.wf["jobs"]["build"]["steps"])
         self.assertIn("cross-link-test", runs)

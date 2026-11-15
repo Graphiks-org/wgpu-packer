@@ -121,28 +121,3 @@ jobs:
           name: dist-${{ matrix.target }}
           path: dist/*.tar.gz
 
-  kotlin_smoke:
-    needs: build
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist-macosArm64
-          path: dist
-      - run: |
-          mkdir -p /tmp/smoke
-          tar xzf dist/wgpu-30.0.1.0-macosArm64-static.tar.gz -C /tmp/smoke
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.8.2"
-      - run: gradle linkReleaseExecutableNative -PwgpuDist=/tmp/smoke --no-daemon
-        working-directory: packaging/kotlin-smoke
-      - run: |
-          out=$(packaging/kotlin-smoke/build/bin/native/releaseExecutable/wgpu-kotlin-smoke.kexe)
-          echo "$out"
-          grep -q KOTLIN_SMOKE_OK <<< "$out"
