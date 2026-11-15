@@ -54,13 +54,18 @@ if [[ "$CC" == cl ]]; then
   # shellcheck disable=SC2086
   # The import libraries (user32.lib, ...) are linker inputs: they must come
   # after `-link`, which is why the whole command ends with $LINK_LIBS.
-  # `LIB` is not guaranteed to reach the bash shell, so when it is missing the
-  # SDK's um and ucrt directories are located explicitly.
-  if [[ -z "${LIB:-}" ]]; then
-    SDK_LIB="$(ls -d "/c/Program Files (x86)/Windows Kits/10/Lib/"*/ 2>/dev/null | sort -V | tail -1)"
-    if [[ -n "$SDK_LIB" ]]; then
-      export LIB="$(cygpath -w "$SDK_LIB")\um\x64;$(cygpath -w "$SDK_LIB")\ucrt\x64"
-    fi
+  # `LIB` reaches the shell as a Windows path list (`C:\...`), which cl cannot
+  # parse from a POSIX shell. Convert every entry to the POSIX form cl accepts
+  # under Git Bash, keeping the order.
+  if [[ -n "${LIB:-}" ]] && command -v cygpath >/dev/null; then
+    NEW_LIB=""
+    IFS=';' read -ra LIB_ENTRIES <<< "$LIB"
+    for entry in "${LIB_ENTRIES[@]}"; do
+      [[ -z "$entry" ]] && continue
+      converted="$(cygpath -u "$entry" 2>/dev/null || printf '%s' "$entry")"
+      NEW_LIB="${NEW_LIB:+$NEW_LIB;}$converted"
+    done
+    export LIB="$NEW_LIB"
   fi
   cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" -Iffi/ffi \
      -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE $LINK_LIBS
