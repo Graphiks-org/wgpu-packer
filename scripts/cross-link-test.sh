@@ -67,7 +67,20 @@ if [[ "$CC" == cl ]]; then
       done
     done
   fi
-  echo "cross-link: SDK_LIBS=${SDK_LIBS[*]:-<none>}" >&2
+  # The matrix lists the SDK libraries by bare name (`user32.lib`), which the
+  # linker resolves through LIB. When the explicit paths were found, drop the
+  # bare names so nothing depends on LIB being parseable.
+  if [[ ${#SDK_LIBS[@]} -gt 0 ]]; then
+    FILTERED=""
+    for item in $LINK_LIBS; do
+      case "$item" in
+        *.lib) [[ " ${SDK_LIBS[*]} " == *"/$item "* ]] || FILTERED="$FILTERED $item" ;;
+        *) FILTERED="$FILTERED $item" ;;
+      esac
+    done
+    LINK_LIBS="$FILTERED"
+  fi
+  echo "cross-link: SDK_LIBS=${#SDK_LIBS[@]} resolved" >&2
   echo "cross-link: LINK_LIBS=$LINK_LIBS" >&2
   cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" -Iffi/ffi \
      -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE \
