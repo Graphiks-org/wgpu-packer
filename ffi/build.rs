@@ -175,8 +175,11 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
     // unambiguous.
     let def_path = out_path.join("wgpu_packer.def");
     std::fs::write(&def_path, def).expect("writing wgpu_packer.def");
-    println!("cargo:warning=emitting DEF {}", def_path.display());
-    println!("cargo:rustc-cdylib-link-arg=/DEF:{}", def_path.display());
+    // `rustc-cdylib-link-arg` is documented but was observed not to reach the
+    // linker for this crate's `staticlib + cdylib + rlib` crate-type set.
+    // `rustc-link-arg` reaches every link of this package; the .def is only a
+    // problem for non-DLL links, and those are not built on this target.
+    println!("cargo:rustc-link-arg=/DEF:{}", def_path.display());
 }
 
 /// Resolution table for `wgpuGetProcAddress`: every function declared in the
