@@ -52,7 +52,9 @@ if [[ "$CC" == cl ]]; then
   mkdir -p build/cross-link
   cl -nologo tests/headers_compile.c -Fobuild/cross-link/wgpu_tu.obj -c -Iffi/ffi
   # shellcheck disable=SC2086
-  cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" $LINK_LIBS -Iffi/ffi -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE
+  # `-link` must come last: everything after it is a linker option, and the
+  # import libraries (user32.lib, ...) are linker inputs.
+  cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" -Iffi/ffi -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE $LINK_LIBS
 else
   # shellcheck disable=SC2086
   $CC "${SYSROOT[@]}" -c tests/headers_compile.c -Iffi/ffi -o /tmp/wgpu_tu.o
