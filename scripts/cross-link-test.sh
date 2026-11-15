@@ -61,7 +61,7 @@ if [[ "$CC" == cl ]]; then
   SDK_LIBS=()
   if [[ -n "${WindowsSdkDir:-}" && -n "${WindowsSDKLibVersion:-}" ]] && command -v cygpath >/dev/null; then
     sdk_root="$(cygpath -u "${WindowsSdkDir}Lib\\${WindowsSDKLibVersion}")"
-    for lib in user32 gdi32 dxgi d3d12 dxguid kernel32; do
+    for lib in user32 gdi32 dxgi d3d12 dxguid kernel32 ole32 oleaut32 uuid bcrypt ntdll userenv ws2_32 dbghelp; do
       [[ -f "$sdk_root/um/x64/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$sdk_root/um/x64/$lib.lib")")
     done
     # The UCRT lives in the SDK, not in the MSVC toolchain.
