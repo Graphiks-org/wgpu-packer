@@ -38,6 +38,9 @@ case "$TRIPLE" in
     : "${NDK_HOME:?NDK_HOME required for $NAME}"
     PREBUILT="$(ls -d "$NDK_HOME"/toolchains/llvm/prebuilt/* | head -1)"
     API="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['deployEnv']['ANDROID_API'])")"
+    # bindgen needs the API level to build a versioned target triple; the
+    # NDK's cdefs.h rejects an unversioned one.
+    export WGPU_ANDROID_API="$API"
     mkdir -p .cargo
     cat > .cargo/config.toml <<EOF
 [target.$TRIPLE]

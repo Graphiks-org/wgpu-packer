@@ -107,8 +107,14 @@ fn main() {
                         .join(host);
                     let sysroot = prebuilt.join("sysroot");
                     if sysroot.is_dir() {
+                        // The NDK's cdefs.h rejects an unversioned triple
+                        // ("Unversioned target triples are not supported!"),
+                        // so append the API level from the matrix
+                        // (deployEnv.ANDROID_API, 24 here).
+                        let api = env::var("WGPU_ANDROID_API").unwrap_or_else(|_| "24".into());
+                        let arch = t.split('-').next().unwrap_or("aarch64");
                         builder = builder
-                            .clang_arg(format!("--target={t}"))
+                            .clang_arg(format!("--target={arch}-linux-android{api}"))
                             .clang_arg(format!("--sysroot={}", sysroot.display()));
                     }
                 }
