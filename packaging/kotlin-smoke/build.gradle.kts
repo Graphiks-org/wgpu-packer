@@ -7,10 +7,12 @@ kotlin {
         binaries {
             executable {
                 entryPoint = "main"
+                // Same frameworks as the archive's lib/link.txt: wgpu_hal's
+                // Metal backend references CoreGraphics (colour spaces).
                 linkerOpts(
                     "-framework", "Metal", "-framework", "QuartzCore",
-                    "-framework", "CoreVideo", "-framework", "IOKit",
-                    "-framework", "Foundation",
+                    "-framework", "CoreGraphics", "-framework", "CoreVideo",
+                    "-framework", "IOKit", "-framework", "Foundation",
                     "-L$wgpuDist/lib", "-lwgpu_packer",
                 )
             }
