@@ -18,7 +18,7 @@ sha256sum -c SHA256SUMS --ignore-missing
 shasum -a 256 -c SHA256SUMS
 ```
 
-The archive's `manifest.json` carries `wgpu.crates` and `wgpu.nativeTag`:
+The archive's `manifest.json` carries `wgpu.crates` and `wgpu.headersRevision`:
 the file name only contains the crates version, not the headers version.
 
 A published release is immutable. For a fix, a new release `v30.0.1.1` is

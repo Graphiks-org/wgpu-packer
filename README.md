@@ -1,7 +1,7 @@
 # wgpu-packer
 
-Prebuilt [wgpu-native](https://github.com/gfx-rs/wgpu-native) libraries
-published as GitHub Releases for non-web Kotlin/Native targets.
+Prebuilt WebGPU libraries published as GitHub Releases for non-web
+Kotlin/Native targets.
 
 This repository only produces libraries (`webgpu.h` headers plus
 `libwgpu_packer`). Any Kotlin/Native, JNI or Swift binding lives in the
@@ -9,13 +9,12 @@ consuming project.
 
 ## Versioning and republication
 
-The archive name is `wgpu-<WGPU_VERSION>.<PACKER_VERSION>-<kotlinTarget>-<linkage>.tar.gz`,
-following wgpu-native's own `X.Y.Z.N` scheme.
+The archive name is `wgpu-<WGPU_VERSION>.<PACKER_VERSION>-<kotlinTarget>-<linkage>.tar.gz`.
 
 | What changed | Counter | Example |
 |---|---|---|
 | wgpu crates (`wgpu-core`, `wgpu-hal`, `naga`) | `WGPU_VERSION` + reset `PACKER_VERSION=0` | `30.0.1.0` → `30.0.2.0` |
-| wgpu-native headers (ABI) | `WGPU_NATIVE_TAG` + reset `PACKER_VERSION=0` | `30.0.1.0` → `30.0.1.0` (new `nativeTag`) |
+| `webgpu.h` revision (ABI) | edit `WEBGPU_HEADERS_REVISION` + reset `PACKER_VERSION=0` | `30.0.1.0` → `30.0.1.0` (new `headersRevision`) |
 | Bug in this packer's Rust (`ffi/`, `scripts/`, `targets/`) | `PACKER_VERSION` +1 | `30.0.1.0` → `30.0.1.1` |
 
 To republish after a fix: increment `PACKER_VERSION` in `wgpu-pin.env`, push
@@ -23,7 +22,7 @@ a tag `v<WGPU_VERSION>.<PACKER_VERSION>`. **Never reuse an existing tag**: a
 published release is immutable, and consumers pin its SHA256.
 
 Each packaged archive carries a `manifest.json` recording both `wgpu.crates`
-and `wgpu.nativeTag`, since the file name only carries the crates version.
+and `wgpu.headersRevision`, since the file name only carries the crates version.
 
 ## Target status
 
@@ -59,7 +58,6 @@ validated; the shared `.so` is not tested.
 ## Local build
 
 ```bash
-bash scripts/sync.sh                       # wgpu-native clone + headers + .pin-state
 bash scripts/build-target.sh macosArm64
 bash scripts/package.sh macosArm64 static  # -> dist/wgpu-30.0.1.0-macosArm64-static.tar.gz
 ```

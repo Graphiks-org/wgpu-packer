@@ -18,7 +18,7 @@ def validate(data):
     require(isinstance(data.get("packerVersion"), str) and data["packerVersion"], "packerVersion required")
     wgpu = data.get("wgpu", {})
     require(isinstance(wgpu.get("crates"), str) and wgpu["crates"], "wgpu.crates required")
-    require(isinstance(wgpu.get("nativeTag"), str) and wgpu["nativeTag"], "wgpu.nativeTag required")
+    require(isinstance(wgpu.get("headersRevision"), str) and wgpu["headersRevision"], "wgpu.headersRevision required")
     target = data.get("target", {})
     for key in ("kotlinTarget", "triple", "os", "arch"):
         require(isinstance(target.get(key), str) and target[key], f"target.{key} required")

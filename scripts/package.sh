@@ -55,15 +55,14 @@ done
 
 mkdir -p dist
 ARCHIVE="dist/wgpu-$VERSION-$NAME-$KIND.tar.gz"
-# The archive name only carries the crates version: the manifest is the
-# only place that also records the wgpu-native tag of the vendored headers.
-# It is generated before the tar so it ends up inside the archive.
+# The manifest records the crates version and the headers revision; it is
+# generated before the tar so it ends up inside the archive.
 python3 packaging/make-manifest.py \
   --install-dir "$STAGE" \
   --kotlin-target "$NAME" \
   --entry-json "$(python3 -c "import sys,json; sys.path.insert(0,'tests'); import matrix; print(json.dumps(matrix.by_kotlin_target('$NAME')))")" \
   --wgpu-version "$WGPU_VERSION" \
-  --native-tag "$WGPU_NATIVE_TAG" \
+  --headers-revision "$(sed -n 's/^#define WEBGPU_HEADERS_REVISION "\(.*\)"$/\1/p' ffi/ffi/webgpu.h)" \
   --packer-version "$PACKER_VERSION" \
   --linkage "$KIND" \
   --out "$STAGE/manifest.json"

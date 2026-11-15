@@ -59,7 +59,7 @@ class Checks(unittest.TestCase):
         import checks
         ghosts = checks.ghost_symbols(
             {"wgpuReal"},
-            {"wgpuReal", "wgpuFantome", "ZN4core3foo3barE", "RNvCs1_5wgpu_native1x"},
+            {"wgpuReal", "wgpuFantome", "ZN4core3foo3barE", "RNvCs1_5wgpu_packer1x"},
             set(),
         )
         self.assertEqual(ghosts, {"wgpuFantome"})

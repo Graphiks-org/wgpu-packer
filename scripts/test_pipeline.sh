@@ -4,12 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
-for f in scripts/sync.sh scripts/build-target.sh scripts/package.sh; do
+for f in scripts/build-target.sh scripts/package.sh; do
   [[ -x "$f" ]] || fail "$f missing or not executable"
 done
-
-# sync.sh --check must succeed on a clean state (consistent pins)
-./scripts/sync.sh --check >/dev/null 2>&1 || fail "sync.sh --check must succeed on a clean state"
 
 # build-target.sh rejects an unknown target
 if ./scripts/build-target.sh cible-inexistante >/dev/null 2>&1; then

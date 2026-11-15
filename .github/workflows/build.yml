@@ -111,7 +111,6 @@ jobs:
           if (-not $msvc) { throw "no MSVC link.exe found" }
           "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvc" >> $env:GITHUB_ENV
           echo "using $msvc"
-      - run: ./scripts/sync.sh
       - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
       - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)
       - run: ./scripts/package.sh ${{ matrix.target }} static

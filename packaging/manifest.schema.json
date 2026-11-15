@@ -8,10 +8,10 @@
     "packerVersion": { "type": "string" },
     "wgpu": {
       "type": "object",
-      "required": ["crates", "nativeTag"],
+      "required": ["crates", "headersRevision"],
       "properties": {
         "crates": { "type": "string" },
-        "nativeTag": { "type": "string" }
+        "headersRevision": { "type": "string" }
       }
     },
     "target": {

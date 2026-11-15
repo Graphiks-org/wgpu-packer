@@ -1,8 +1,6 @@
 /build/
 /dist/
 /target/
-/third-party/
-/.pin-state
 /.cargo/
 __pycache__/
 *.pyc

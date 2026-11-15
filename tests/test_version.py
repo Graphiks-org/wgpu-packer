@@ -25,8 +25,10 @@ class Version(unittest.TestCase):
     def test_packer_version_is_non_negative_integer(self):
         self.assertRegex(pin()["PACKER_VERSION"], r"^\d+$")
 
-    def test_native_tag_is_pinned(self):
-        self.assertRegex(pin()["WGPU_NATIVE_TAG"], r"^v\d+\.\d+\.\d+\.\d+$")
+    def test_headers_revision_is_declared(self):
+        with open(os.path.join(ROOT, "ffi", "ffi", "webgpu.h"), encoding="utf-8") as handle:
+            text = handle.read()
+        self.assertRegex(text, r'(?m)^#define WEBGPU_HEADERS_REVISION "[^"]+"$')
 
     def test_archive_name_matches_pin(self):
         p = pin()

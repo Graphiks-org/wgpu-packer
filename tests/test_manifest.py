@@ -19,16 +19,17 @@ class Manifest(unittest.TestCase):
                 for line in handle
                 if "=" in line and not line.startswith("#")
             )
-        self.assertIn("WGPU_NATIVE_TAG", pins)
-        # The archive name only carries the crates version, so the manifest is the
-        # only place the vendored headers' tag can be read back. Assert the
+        # The archive name only carries the crates version, so the manifest is
+        # the only place the headers revision can be read back. Assert the
         # generator really writes the value it receives, not just that a dict
         # round-trips through json.
         with open(os.path.join(ROOT, "packaging", "make-manifest.py"), encoding="utf-8") as handle:
             source = handle.read()
-        self.assertIn("nativeTag", source)
-        self.assertIn("args.native_tag", source)
-        self.assertRegex(pins["WGPU_NATIVE_TAG"], r"^v\d+\.\d+\.\d+\.\d+$")
+        self.assertIn("headersRevision", source)
+        self.assertIn("args.headers_revision", source)
+        with open(os.path.join(ROOT, "ffi", "ffi", "webgpu.h"), encoding="utf-8") as handle:
+            header = handle.read()
+        self.assertRegex(header, r'(?m)^#define WEBGPU_HEADERS_REVISION "[^"]+"$')
         self.assertEqual(entry["kotlinTarget"], "macosArm64")
 
     def test_schema_requires_wgpu_block(self):
@@ -36,7 +37,7 @@ class Manifest(unittest.TestCase):
             schema = json.load(handle)
         self.assertIn("wgpu", schema["required"])
         self.assertIn("crates", schema["properties"]["wgpu"]["required"])
-        self.assertIn("nativeTag", schema["properties"]["wgpu"]["required"])
+        self.assertIn("headersRevision", schema["properties"]["wgpu"]["required"])
 
     def test_package_sh_emits_manifest(self):
         with open(os.path.join(ROOT, "scripts", "package.sh"), encoding="utf-8") as handle:

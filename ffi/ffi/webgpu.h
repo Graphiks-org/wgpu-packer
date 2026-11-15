@@ -24,6 +24,9 @@
  * (if it is provided in a system-wide or toolchain-wide include directory).
  */
 
+/* Revision of this header, recorded in every archive manifest. */
+#define WEBGPU_HEADERS_REVISION "2023-11-01"
+
 #ifndef WEBGPU_H_
 #define WEBGPU_H_
 

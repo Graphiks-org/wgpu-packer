@@ -123,7 +123,7 @@ pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
 /// - All structures used as extension objects must have `pub next_in_chain: Option<&ChainedStruct>` and `pub s_type: SType`
 ///   as the first and second members respectively.
 ///
-/// The result of these rules, and the fact that wgpu-native functions using it do not validate all these assumptions,
+/// The result of these rules, and the fact that the functions using it do not validate all these assumptions,
 /// using this macro is an indication that the function itself must be made unsafe.
 ///
 /// # Notes

@@ -32,7 +32,7 @@ def main():
     parser.add_argument("--kotlin-target", required=True)
     parser.add_argument("--entry-json", required=True, help="one matrix entry as JSON")
     parser.add_argument("--wgpu-version", required=True, help="X.Y.Z of wgpu-core/hal/naga")
-    parser.add_argument("--native-tag", required=True, help="wgpu-native tag whose headers are vendored")
+    parser.add_argument("--headers-revision", required=True, help="revision of the vendored webgpu.h")
     parser.add_argument("--linkage", required=True, choices=["static", "shared"])
     parser.add_argument("--packer-version", default="0")
     parser.add_argument("--out", required=True)
@@ -69,9 +69,9 @@ def main():
     manifest = {
         "schemaVersion": 1,
         "packerVersion": args.packer_version,
-        # The archive name carries only the crates version; nativeTag is the
-        # only record of which wgpu-native headers were vendored.
-        "wgpu": {"crates": args.wgpu_version, "nativeTag": args.native_tag},
+        # The archive name carries only the crates version; headersRevision
+        # is the only record of which webgpu.h the archive was built against.
+        "wgpu": {"crates": args.wgpu_version, "headersRevision": args.headers_revision},
         "target": {
             "kotlinTarget": args.kotlin_target,
             "triple": entry["triple"],
