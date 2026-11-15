@@ -62,7 +62,9 @@ bash scripts/build-target.sh macosArm64
 bash scripts/package.sh macosArm64 static  # -> dist/wgpu-30.0.1.0-macosArm64-static.tar.gz
 ```
 
-Android targets require `NDK_HOME` pointing at NDK 27.0.11902866.
+Android targets require `NDK_HOME` pointing at NDK 28 or newer: NDK 28 is
+the first release whose linker aligns shared-library segments on 16 KiB,
+which Google Play requires. NDK 27 and older produce 4 KiB segments.
 
 ## Tests
 

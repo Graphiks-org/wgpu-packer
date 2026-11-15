@@ -80,14 +80,18 @@ jobs:
           echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc' >> "$GITHUB_ENV"
           echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_AR=x86_64-w64-mingw32-ar' >> "$GITHUB_ENV"
       - if: contains(matrix.target, 'android')
-        # The ubuntu-24.04 image already ships the Android SDK and several
-        # NDKs; `android-actions/setup-android` re-runs sdkmanager and fails
-        # on the pre-installed packages. Reuse the image's SDK, and take the
-        # newest NDK it ships (the exact patch is reported by the build).
+        # NDK 28 is the first release whose linker aligns shared-library
+        # segments on 16 KiB by default, which Google Play requires. NDK 27
+        # and older produce 4 KiB segments. The ubuntu-24.04 image ships
+        # several NDKs; pick the newest one that is at least 28.
         run: |
           sdk="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
-          ndk="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | tail -1)"
+          ndk="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | awk -F/ '{v=$(NF); split(v, p, "."); if (p[1] >= 28) last=$0} END {print last}')"
+          if [ -z "$ndk" ]; then
+            echo "no NDK >= 28 on this runner" >&2
+            exit 1
+          fi
           echo "using NDK: $ndk"
           echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
       - if: matrix.target == 'windowsMsvcX64'
