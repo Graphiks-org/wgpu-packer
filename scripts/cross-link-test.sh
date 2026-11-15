@@ -9,7 +9,11 @@ source wgpu-pin.env
 
 NAME="$1"
 TRIPLE="$(./scripts/build-target.sh --print-target "$NAME")"
-LIB="target/$TRIPLE/release/libwgpu_packer.a"
+# MSVC names its static library `wgpu_packer.lib`, not `libwgpu_packer.a`.
+case "$TRIPLE" in
+  *-windows-msvc) LIB="target/$TRIPLE/release/wgpu_packer.lib" ;;
+  *)              LIB="target/$TRIPLE/release/libwgpu_packer.a" ;;
+esac
 [[ -f "$LIB" ]] || { echo "cross-link-test: $LIB missing — build first" >&2; exit 2; }
 
 LINK_LIBS="$(python3 -c "import sys; sys.path.insert(0,'tests'); import matrix; print(matrix.by_kotlin_target('$NAME')['linkLibs'])")"
