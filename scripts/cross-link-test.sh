@@ -61,17 +61,19 @@ if [[ "$CC" == cl ]]; then
   SDK_LIBS=()
   if [[ -n "${WindowsSdkDir:-}" && -n "${WindowsSDKLibVersion:-}" ]] && command -v cygpath >/dev/null; then
     sdk_root="$(cygpath -u "${WindowsSdkDir}Lib\\${WindowsSDKLibVersion}")"
-    for dir in "$sdk_root/um/x64" "$sdk_root/ucrt/x64"; do
-      for lib in user32 gdi32 dxgi d3d12 dxguid kernel32; do
-        [[ -f "$dir/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$dir/$lib.lib")")
-      done
+    for lib in user32 gdi32 dxgi d3d12 dxguid kernel32; do
+      [[ -f "$sdk_root/um/x64/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$sdk_root/um/x64/$lib.lib")")
+    done
+    # The UCRT lives in the SDK, not in the MSVC toolchain.
+    for lib in libucrt libucrtd ucrt; do
+      [[ -f "$sdk_root/ucrt/x64/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$sdk_root/ucrt/x64/$lib.lib")")
     done
   fi
   # The C runtime (LIBCMT, libucrt, ...) lives in the MSVC toolchain, which
   # `VCToolsInstallDir` locates.
   if [[ -n "${VCToolsInstallDir:-}" ]] && command -v cygpath >/dev/null; then
     crt_root="$(cygpath -u "${VCToolsInstallDir}lib\\x64")"
-    for lib in libcmt libucrt libvcruntime libcpmt oldnames; do
+    for lib in libcmt libvcruntime libcpmt oldnames; do
       [[ -f "$crt_root/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$crt_root/$lib.lib")")
     done
   fi
