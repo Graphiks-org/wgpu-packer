@@ -142,6 +142,12 @@ fn write_msvc_exports(out_path: &PathBuf, manifest_dir: &PathBuf) {
             }
         }
     }
+    // The debug-only probe is compiled out of release builds (see
+    // ffi_utils.rs), so exporting it there would be an unresolved symbol.
+    let debug_assertions = env::var("CARGO_CFG_DEBUG_ASSERTIONS").as_deref() == Ok("true");
+    if !debug_assertions {
+        names.retain(|name| name != "wgpuDebugTriggerPanic");
+    }
     names.sort();
     let mut def = String::from("LIBRARY wgpu_packer\nEXPORTS\n");
     for name in &names {
