@@ -53,10 +53,12 @@ esac
 rustup target add "$TRIPLE" >/dev/null
 cargo build --locked --release -p wgpu-packer-ffi --target "$TRIPLE"
 
-# Symbol audit (spec §4.5) on this target's library.
-case "$(uname -s)" in
-  Darwin | Linux) LIB="target/$TRIPLE/release/libwgpu_packer.a" ;;
-  MINGW*)         LIB="target/$TRIPLE/release/wgpu_packer.dll" ;;
+# Symbol audit (spec §4.5) on this target's library. The audit reads the
+# exports of the shared library when the target ships one (the checks.py
+# dumpbin path needs the DLL), and the static archive otherwise.
+case "$TRIPLE" in
+  *-windows-msvc | *-windows-gnu) LIB="target/$TRIPLE/release/wgpu_packer.dll" ;;
+  *)                              LIB="target/$TRIPLE/release/libwgpu_packer.a" ;;
 esac
 python3 tests/checks.py --lib "$LIB"
 
