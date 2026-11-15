@@ -68,6 +68,8 @@ if [[ "$CC" == cl ]]; then
       done
     fi
   fi
+  echo "cross-link: SDK_LIBS=${SDK_LIBS[*]:-<none>}" >&2
+  echo "cross-link: LINK_LIBS=$LINK_LIBS" >&2
   cl -nologo tests/link_main.c build/cross-link/wgpu_tu.obj "$LIB" -Iffi/ffi \
      -Fobuild/cross-link/wgpu_cross_link.exe -link -SUBSYSTEM:CONSOLE \
      "${SDK_LIBS[@]}" $LINK_LIBS
