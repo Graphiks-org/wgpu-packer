@@ -55,18 +55,17 @@ if [[ "$CC" == cl ]]; then
   # The import libraries (user32.lib, ...) are linker inputs: they must come
   # after `-link`, which is why the whole command ends with $LINK_LIBS.
   # Passing `LIB` from a POSIX shell to cl does not work: the value is a
-  # Windows path list and Git Bash mangles it. Resolve the SDK import
-  # libraries directly and hand them to the linker as explicit inputs.
+  # Windows path list and Git Bash mangles it. `msvc-dev-cmd` also exports
+  # `WindowsSdkDir` and `WindowsSDKLibVersion`, which locate the import
+  # libraries unambiguously.
   SDK_LIBS=()
-  if command -v cygpath >/dev/null; then
-    SDK_ROOT="$(ls -d "/c/Program Files (x86)/Windows Kits/10/Lib/"*/ 2>/dev/null | sort -V | tail -1)"
-    if [[ -n "$SDK_ROOT" ]]; then
-      for dir in "${SDK_ROOT}um/x64" "${SDK_ROOT}ucrt/x64"; do
-        for lib in user32 gdi32 dxgi d3d12 dxguid kernel32; do
-          [[ -f "$dir/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$dir/$lib.lib")")
-        done
+  if [[ -n "${WindowsSdkDir:-}" && -n "${WindowsSDKLibVersion:-}" ]] && command -v cygpath >/dev/null; then
+    sdk_root="$(cygpath -u "${WindowsSdkDir}Lib\\${WindowsSDKLibVersion}")"
+    for dir in "$sdk_root/um/x64" "$sdk_root/ucrt/x64"; do
+      for lib in user32 gdi32 dxgi d3d12 dxguid kernel32; do
+        [[ -f "$dir/$lib.lib" ]] && SDK_LIBS+=("$(cygpath -w "$dir/$lib.lib")")
       done
-    fi
+    done
   fi
   echo "cross-link: SDK_LIBS=${SDK_LIBS[*]:-<none>}" >&2
   echo "cross-link: LINK_LIBS=$LINK_LIBS" >&2
