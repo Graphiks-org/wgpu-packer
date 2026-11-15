@@ -25,9 +25,13 @@ pub unsafe extern "C" fn wgpuAdapterGetFeatures(
     adapter: native::WGPUAdapter,
     features: Option<&mut native::WGPUSupportedFeatures>,
 ) -> native::WGPUStatus {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
+    let (adapter_id, context, adapter_arc) = {
+        let adapter_ref = adapter.as_ref().expect("invalid adapter");
+        // Strong reference kept by the device so wgpuDeviceGetAdapter can
+        // hand it back; released with the device.
+        Arc::increment_strong_count(adapter);
+        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
+        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
     };
     let adapter_features = context.adapter_features(adapter_id);
     let features = features.expect("invalid return pointer \"features\"");
@@ -42,9 +46,13 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
     limits: Option<&mut native::WGPULimits>,
 ) -> native::WGPUBool {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
+    let (adapter_id, context, adapter_arc) = {
+        let adapter_ref = adapter.as_ref().expect("invalid adapter");
+        // Strong reference kept by the device so wgpuDeviceGetAdapter can
+        // hand it back; released with the device.
+        Arc::increment_strong_count(adapter);
+        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
+        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
     };
     let limits = limits.expect("invalid return pointer \"limits\"");
 
@@ -75,9 +83,13 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
 ) -> native::WGPUBool {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
+    let (adapter_id, context, adapter_arc) = {
+        let adapter_ref = adapter.as_ref().expect("invalid adapter");
+        // Strong reference kept by the device so wgpuDeviceGetAdapter can
+        // hand it back; released with the device.
+        Arc::increment_strong_count(adapter);
+        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
+        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
     };
     let adapter_features = context.adapter_features(adapter_id);
 
@@ -103,9 +115,13 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     descriptor: Option<&native::WGPUDeviceDescriptor>,
     callback_info: native::WGPURequestDeviceCallbackInfo,
 ) -> native::WGPUFuture {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
+    let (adapter_id, context, adapter_arc) = {
+        let adapter_ref = adapter.as_ref().expect("invalid adapter");
+        // Strong reference kept by the device so wgpuDeviceGetAdapter can
+        // hand it back; released with the device.
+        Arc::increment_strong_count(adapter);
+        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
+        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
     };
     future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
@@ -146,7 +162,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     // Synchronous resolution on the wgc side: the future completes before the
     // return, the callback is delivered according to the mode (AllowSpontaneous → before return,
     // historical convention of this packer; GUIDE §5).
-    let future_id = future::register(context, callback_info.mode, Source::Cpu);
+    let future_id = future::register(&context, callback_info.mode, Source::Cpu);
 
     let result = context.adapter_request_device(adapter_id, &desc, None, None);
     match result {
@@ -161,6 +177,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
+                    adapter: adapter_arc.clone(),
                     queue: Arc::new(QueueId {
                         context: context.clone(),
                         id: queue_id,

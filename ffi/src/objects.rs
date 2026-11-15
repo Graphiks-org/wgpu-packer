@@ -154,6 +154,9 @@ impl Drop for QueueId {
 pub struct WGPUDeviceImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::DeviceId,
+    /// The adapter this device was requested from (wgpuDeviceGetAdapter).
+    /// Held as a strong reference so the adapter outlives the device.
+    pub(crate) adapter: Arc<WGPUAdapterImpl>,
     pub(crate) queue: Arc<QueueId>,
     pub(crate) error_sink: ErrorSink,
     /// Loss future (wgpuDeviceGetLostFuture): created lazily on the

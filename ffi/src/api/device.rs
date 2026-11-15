@@ -993,6 +993,19 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
 }
 
 #[no_mangle]
+/// Returns the adapter this device was requested from (Dawn's
+/// `wgpuDeviceGetAdapter`). The returned handle is a new strong reference the
+/// caller releases with `wgpuAdapterRelease`.
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetAdapter(
+    device: native::WGPUDevice,
+) -> native::WGPUAdapter {
+    let device = device.as_ref().expect("invalid device");
+    let adapter = Arc::into_raw(device.adapter.clone()) as native::WGPUAdapter;
+    adapter
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
     device: native::WGPUDevice,
     info: Option<&mut native::WGPUAdapterInfo>,

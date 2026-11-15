@@ -1476,6 +1476,7 @@ extern "C"
 #endif
 
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
+    WGPUAdapter wgpuDeviceGetAdapter(WGPUDevice device);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
 
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
