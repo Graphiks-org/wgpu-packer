@@ -52,13 +52,22 @@ def read_allowlist(path: str) -> set[str]:
 
 
 def parse_dumpbin(raw: str) -> set[str]:
-    """Parse the output of `dumpbin /exports` (MSVC dll)."""
+    """Parse the output of `dumpbin /exports` (MSVC dll).
+
+    A `/EXPORT:name` produces `1 0 00001000 name = name` (five fields, the
+    name repeated after `=`), while a `.def` export produces the four-field
+    `1 0 00001000 name`. Both forms are accepted.
+    """
     syms = set()
     for line in raw.splitlines():
         parts = line.split()
+        if len(parts) < 4 or not parts[0].isdigit():
+            continue
         # "  1    0 001A2B3C wgpuCreateInstance" (ordinal hint RVA name)
-        if len(parts) == 4 and parts[0].isdigit() and parts[3].startswith("wgpu"):
-            syms.add(parts[3])
+        # "  1    0 001A2B3C wgpuCreateInstance = wgpuCreateInstance"
+        name = parts[3]
+        if name.startswith("wgpu"):
+            syms.add(name)
     return syms
 
 
