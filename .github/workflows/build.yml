@@ -93,6 +93,14 @@ jobs:
       - if: matrix.target == 'windowsMsvcX64'
         uses: ilammy/msvc-dev-cmd@v1 # MSVC linker, LIB and dumpbin in PATH
       - if: matrix.target == 'windowsMsvcX64'
+        # msvc-dev-cmd exports LIB to later steps, but the bash shell used by
+        # `run:` does not inherit it reliably; forward it explicitly so cl can
+        # resolve the SDK import libraries (user32.lib, ...).
+        shell: pwsh
+        run: |
+          if ($env:LIB) { "LIB=$env:LIB" >> $env:GITHUB_ENV }
+          else { throw "LIB is not set by msvc-dev-cmd" }
+      - if: matrix.target == 'windowsMsvcX64'
         # Git for Windows ships its own /usr/bin/link.exe (a coreutils clone),
         # which shadows MSVC's link.exe when cargo resolves the linker by name.
         # Point cargo at the real linker explicitly: PATH order is not enough,
