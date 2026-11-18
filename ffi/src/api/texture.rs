@@ -114,7 +114,7 @@ pub unsafe extern "C" fn wgpuTextureGetTextureBindingViewDimension(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureViewDimension {
     // Resolved at creation packer-side (explicit chained value or derivation
-    // rule): wgc 29 does not expose this concept (gfx-rs/wgpu#7428).
+    // rule): wgc 30 does not expose this concept (gfx-rs/wgpu#7428).
     let texture = texture.as_ref().expect("invalid texture");
     texture.data.texture_binding_view_dimension
 }

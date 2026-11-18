@@ -1252,7 +1252,7 @@ pub fn write_global_report(
 /// Resolves the binding view dimension of a texture (webgpu.h
 /// WGPUTextureBindingViewDimension): explicit value if chained and defined,
 /// otherwise derived from the dimension type (1D / 3D / multisample -> 2D;
-/// 2D -> 2DArray beyond one layer). wgc 29 does not have this concept
+/// 2D -> 2DArray beyond one layer). wgc 30 does not have this concept
 /// (gfx-rs/wgpu#7428) — resolved packer-side, shared by device and surface.
 pub fn resolve_texture_binding_view_dimension(
     dimension: native::WGPUTextureDimension,

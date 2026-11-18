@@ -1,6 +1,6 @@
 //! SetLabel: the label hint is accepted and ignored.
 //!
-//! wgpu-core 29 exposes no post-creation label change (no
+//! wgpu-core 30 exposes no post-creation label change (no
 //! `*_set_label` on `Global`): the labels of error messages remain
 //! the ones passed at creation. An explicit no-op is better than an abort for
 //! a purely informational hint — the ABI stays safe for consumers.

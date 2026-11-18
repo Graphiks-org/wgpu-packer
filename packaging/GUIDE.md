@@ -50,7 +50,7 @@ The exact flags per target are in the archive's `lib/link.txt` — copy them
 into `linkerOpts` (Gradle) or the link config.
 macOS: `-framework Metal -framework QuartzCore -framework CoreVideo
 -framework IOKit -framework Foundation` · Linux: `-ldl -lpthread -lm` ·
-Android: `-llog -landroid` · Windows: `user32 gdi32 dxgi d3d12`.
+Android: `-llog -landroid` · Windows MSVC: `user32 gdi32 dxgi d3d12 dxguid` · Windows mingw (shared): `ws2_32 userenv ntdll ole32 oleaut32 uuid bcrypt dbghelp` — copy the exact flags from the archive's `lib/link.txt`.
 
 ## 4. Memory contract (mandatory)
 
@@ -122,13 +122,13 @@ wgpuExternalTextureAddRef, wgpuExternalTextureRelease.
 
 Note:
 
-- The `*SetLabel` functions are accepted and ignored: wgpu-core 29 exposes
+- The `*SetLabel` functions are accepted and ignored: wgpu-core 30 exposes
   no post-creation label change (see `ffi/src/api/labels.rs`). Error message
   labels remain those from creation.
 - Async pipeline creation is synchronous internally (§5); validation errors
   only go through the callback.
 - The texture binding view dimension is resolved on the packer side
-  (explicit chained value or derivation rule) — wgpu-core 29 does not
+  (explicit chained value or derivation rule) — wgpu-core 30 does not
   expose it (gfx-rs/wgpu#7428).
 
 Any other function declared in webgpu.h/wgpu.h is implemented — including

@@ -27,10 +27,6 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#ifdef __EMSCRIPTEN__
-#error "Do not include this header. Use the headers provided by Emdawnwebgpu instead."
-#endif
-
 /* Revision of this header, recorded in every archive manifest. */
 #define WEBGPU_HEADERS_REVISION "2023-11-01"
 
@@ -163,7 +159,6 @@ struct WGPUExternalTextureBindingEntry;
 struct WGPUExternalTextureBindingLayout;
 struct WGPUFuture;
 struct WGPUInstanceLimits;
-struct WGPUINTERNAL_HAVE_EMDAWNWEBGPU_HEADER;
 
 struct WGPUMultisampleState;
 
@@ -1477,6 +1472,15 @@ typedef struct WGPUExtent3D {
     uint32_t depthOrArrayLayers;
 } WGPUExtent3D WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Initializer for @ref WGPUExtent3D.
+ */
+#define WGPU_EXTENT_3D_INIT _wgpu_MAKE_INIT_STRUCT(WGPUExtent3D, { \
+    /*.width=*/0 _wgpu_COMMA \
+    /*.height=*/1 _wgpu_COMMA \
+    /*.depthOrArrayLayers=*/1 _wgpu_COMMA \
+})
+
 // Can be chained in WGPUBindGroupEntry
 typedef struct WGPUExternalTextureBindingEntry {
     WGPUChainedStruct chain;
@@ -1521,10 +1525,6 @@ typedef struct WGPUInstanceLimits {
     /*.timedWaitAnyMaxCount=*/0 _wgpu_COMMA \
 })
 
-typedef struct WGPUINTERNAL_HAVE_EMDAWNWEBGPU_HEADER {
-    WGPUBool unused;
-} WGPUINTERNAL_HAVE_EMDAWNWEBGPU_HEADER WGPU_STRUCTURE_ATTRIBUTE;
-
 typedef struct WGPUMultisampleState {
     WGPUChainedStruct * nextInChain;
     uint32_t count;
@@ -1544,6 +1544,15 @@ typedef struct WGPUOrigin3D {
     uint32_t y;
     uint32_t z;
 } WGPUOrigin3D WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Initializer for @ref WGPUOrigin3D.
+ */
+#define WGPU_ORIGIN_3D_INIT _wgpu_MAKE_INIT_STRUCT(WGPUOrigin3D, { \
+    /*.x=*/0 _wgpu_COMMA \
+    /*.y=*/0 _wgpu_COMMA \
+    /*.z=*/0 _wgpu_COMMA \
+})
 
 typedef struct WGPUPassTimestampWrites {
     WGPUChainedStruct * nextInChain;
@@ -2640,9 +2649,6 @@ extern "C" {
 #endif
 
 #if !defined(WGPU_SKIP_PROCS)
-// TODO(374150686): Remove these Emscripten specific declarations from the
-// header once they are fully deprecated.
-WGPU_EXPORT WGPUDevice emscripten_webgpu_get_device(void);
 // Global procs
 typedef WGPUInstance (*WGPUProcCreateInstance)(WGPU_NULLABLE WGPUInstanceDescriptor const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
 typedef void (*WGPUProcGetInstanceFeatures)(WGPUSupportedInstanceFeatures * features) WGPU_FUNCTION_ATTRIBUTE;

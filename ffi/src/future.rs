@@ -1,6 +1,6 @@
 //! Packer-side future registry — webgpu.h "Asynchronous-Operations".
 //!
-//! wgpu-core 29 exposes no future infrastructure: every async entry
+//! wgpu-core 30 exposes no future infrastructure: every async entry
 //! point registers a future here and completes it when wgc resolves
 //! the operation. Callback delivery follows the `WGPUCallbackMode` chosen by
 //! the consumer:

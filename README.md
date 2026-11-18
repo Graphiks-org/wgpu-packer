@@ -31,7 +31,7 @@ are built by CI and published.
 
 | Target | Backends | Local validation |
 |---|---|---|
-| `macosArm64` | metal, null | archive + install (static + shared); smoke test run |
+| `macosArm64` | metal, null | archive + install (static + shared); link-and-call test (`link_main.c`) |
 | `macosX64` | metal, null | archive + install (cross) |
 | `iosArm64` | metal, null | archive + install; device: structural check |
 | `iosSimulatorArm64` | metal, null | archive + install (cross) |
@@ -39,7 +39,7 @@ are built by CI and published.
 | `linuxArm64` | vulkan, gl, null | built in CI (`ubuntu-24.04`) |
 | `mingwX64` | d3d12, vulkan, gl, null | built in CI (`ubuntu-24.04`) |
 | `windowsMsvcX64` | d3d12, vulkan, gl, null | built in CI (`windows-2022`) |
-| `androidNativeArm64` | vulkan, gles, null | archive + install; K/N app run on emulator (`arm64-v8a`, static only) |
+| `androidNativeArm64` | vulkan, gles, null | archive + install; K/N consumption validated during the v1 spike (`arm64-v8a`, static only) |
 | `androidNativeX64` | vulkan, gles, null | built in CI; NDK pinned (static only) |
 
 Dropped targets:
@@ -71,6 +71,11 @@ which Google Play requires. NDK 27 and older produce 4 KiB segments.
 ```bash
 python3 tests/test_matrix.py
 python3 tests/test_version.py
+python3 tests/test_checks.py
+python3 tests/test_unimplemented.py
+python3 tests/test_ci.py
+python3 tests/test_manifest.py
+python3 tests/test_android_targets.py
 bash scripts/test_pipeline.sh
 bash scripts/test_packaging.sh
 ```

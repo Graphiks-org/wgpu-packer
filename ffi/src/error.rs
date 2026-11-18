@@ -294,7 +294,7 @@ pub(crate) fn route_async_pipeline_error(
 }
 
 /// "device lost" payload: fires the deviceLostCallbackInfo (reason
-/// `Destroyed` — wgc 29 does not expose the real cause of the loss). The handle
+/// `Destroyed` — wgc 30 does not expose the real cause of the loss). The handle
 /// is owned by the payload (`OwnedHandle`): the reference lives until
 /// delivery (or cancellation at instance destruction), never a
 /// dangling pointer on deferred delivery.

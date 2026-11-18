@@ -277,7 +277,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipelineAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // wgc 29 has no async creation: mapping and creation are synchronous
+    // wgc 30 has no async creation: mapping and creation are synchronous
     // (the C chains do not outlive the call), the future completes before
     // the return — the callback is delivered according to the mode (AllowSpontaneous →
     // before return, same convention as requestDevice; GUIDE §5).
@@ -423,7 +423,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     };
 
     // device=None: device-dependent validation is deferred to finish()
-    // (wgc 29 behavior preserved). Descriptor validation still runs here, and
+    // (wgc 30 behavior preserved). Descriptor validation still runs here, and
     // its errors go to the device sink like every other wgpuDeviceCreate*:
     // the C contract returns a handle, it does not abort.
     let encoder = match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
@@ -664,7 +664,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    // wgc 29 has no async creation (cf. wgpuDeviceCreateComputePipelineAsync).
+    // wgc 30 has no async creation (cf. wgpuDeviceCreateComputePipelineAsync).
     let future_id =
         crate::future::register(context, callback_info.mode, crate::future::Source::Cpu);
 
@@ -941,7 +941,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     };
 
     // webgpu.h: the binding view dimension arrives chained
-    // (WGPUSType_TextureBindingViewDimension). wgc 29 does not resolve this
+    // (WGPUSType_TextureBindingViewDimension). wgc 30 does not resolve this
     // concept (gfx-rs/wgpu#7428) — resolved packer-side (conv::resolve_...).
     let texture_binding_view_dimension = conv::resolve_texture_binding_view_dimension(
         descriptor.dimension,

@@ -384,7 +384,7 @@ pub(crate) struct TextureData {
     pub(crate) mip_level_count: u32,
     pub(crate) sample_count: u32,
     /// Resolved dimension of the binding views (chained webgpu.h
-    /// WGPUTextureBindingViewDimension): wgc 29 does not have this concept
+    /// WGPUTextureBindingViewDimension): wgc 30 does not have this concept
     /// (gfx-rs/wgpu#7428), the resolution is done packer-side at creation.
     pub(crate) texture_binding_view_dimension: native::WGPUTextureViewDimension,
 }
