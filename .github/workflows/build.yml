@@ -58,15 +58,21 @@ jobs:
     # header declares (GetLimits status, GetVersion, enumeration,
     # FreeMembers). This is where the GetLimits return-type regression
     # (invisible to the Rust oracles) would have been caught.
-    runs-on: macos-15
+    # ubuntu + linux_x64 prebuilt: same cinterop pipeline, no macOS
+    # runner queue (the macOS jobs of this org get cancelled past the
+    # spending limit).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.93.0
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl1
       - run: cargo build --release -p wgpu-packer-ffi
-      - run: brew install kotlin-native
-      - run: xattr -dr com.apple.quarantine "$(brew --prefix)/Caskroom/kotlin-native" || true
+      - run: |
+          curl -sL https://github.com/JetBrains/kotlin/releases/download/v2.4.21/kotlin-native-prebuilt-linux-x86_64-2.4.21.tar.gz -o /tmp/kn.tar.gz
+          mkdir -p /tmp/kn && tar -xzf /tmp/kn.tar.gz -C /tmp/kn --strip-components=1
+          echo "/tmp/kn/bin" >> "$GITHUB_PATH"
       - run: bash scripts/cinterop-smoke.sh
 
   build:
