@@ -89,7 +89,8 @@ unsafe fn request_first_device(adapter: WGPUAdapter) -> WGPUDevice {
     let mut slot: usize = 0;
     let mut desc = zeroed::<WGPUDeviceDescriptor>();
     desc.uncapturedErrorCallbackInfo.callback = Some(on_uncaptured_error);
-    // Explicit mode: webgpu.h has no default mode (0 = invalid).
+    // Explicit mode: 0 would normalize to WaitAnyOnly (warning); the tests
+    // choose explicit modes for delivery determinism.
     desc.deviceLostCallbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
     let mut cb_info = zeroed::<WGPURequestDeviceCallbackInfo>();
     cb_info.mode = WGPUCallbackMode_AllowSpontaneous;
@@ -1180,6 +1181,207 @@ fn map_async_whole_map_size() {
         wgpu_packer::wgpuBufferRelease(buffer);
         wgpu_packer::wgpuDeviceRelease(device);
         release_adapters(&adapters);
+        common::release_instance(instance);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Regression tests — independent review, 2026-11-18 (D1 + D3)
+// ---------------------------------------------------------------------------
+
+/// webgpu.h declares `WGPUStatus wgpu{Adapter,Device}GetLimits(...)` with
+/// Success = 1 / Error = 2. The implementation used to return a WGPUBool:
+/// 0 matched neither enumerator, so every consumer read the call as a
+/// failure.
+#[test]
+fn get_limits_returns_wgpu_status_success() {
+    unsafe {
+        let instance = common::make_instance();
+        let adapters = enumerate(instance);
+        if let Some(&adapter) = adapters.first() {
+            let mut limits = zeroed::<WGPULimits>();
+            assert_eq!(
+                wgpu_packer::wgpuAdapterGetLimits(adapter, Some(&mut limits)),
+                WGPUStatus_Success,
+                "adapter GetLimits must report WGPUStatus_Success"
+            );
+            let device = request_first_device(adapter);
+            if !device.is_null() {
+                let mut limits = zeroed::<WGPULimits>();
+                assert_eq!(
+                    wgpu_packer::wgpuDeviceGetLimits(device, Some(&mut limits)),
+                    WGPUStatus_Success,
+                    "device GetLimits must report WGPUStatus_Success"
+                );
+                wgpu_packer::wgpuDeviceRelease(device);
+            }
+        }
+        release_adapters(&adapters);
+        common::release_instance(instance);
+    }
+}
+
+/// WGPU_NATIVE_VERSION comes from wgpu-pin.env: 30.0.1.1 packed MSB-first
+/// is 0x1E000101. Before the fix the env var was never set: always 0.
+#[test]
+fn get_version_reports_the_pinned_version() {
+    assert_eq!(wgpu_packer::wgpuGetVersion(), 0x1E000101);
+}
+
+/// A `WGPUFutureWaitInfo` array is reusable across WaitAny calls: an entry
+/// that did not complete must be reset to 0 — a stale 1 from a previous
+/// call would report a completion that did not happen.
+#[test]
+fn wait_any_resets_stale_completed_flags() {
+    unsafe {
+        let instance = common::make_instance();
+        let adapters = enumerate(instance);
+        let Some(&adapter) = adapters.first() else {
+            release_adapters(&adapters);
+            common::release_instance(instance);
+            return;
+        };
+        let device = request_first_device(adapter);
+        assert!(!device.is_null());
+        let lost = wgpu_packer::wgpuDeviceGetLostFuture(device);
+
+        let mut info = WGPUFutureWaitInfo {
+            future: lost,
+            completed: 1, // stale flag from a previous call
+        };
+        assert_eq!(
+            wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut info, 0),
+            WGPUWaitStatus_TimedOut
+        );
+        assert_eq!(info.completed, 0, "a non-completed entry must be reset to 0");
+
+        wgpu_packer::wgpuDeviceRelease(device);
+        release_adapters(&adapters);
+        common::release_instance(instance);
+    }
+}
+
+/// mapAsync validation errors go to the C callback ONLY (webgpu.h): one
+/// delivery, nothing on the device error sink / uncaptured handler.
+#[test]
+fn map_async_validation_error_single_channel() {
+    unsafe {
+        static UNCAPPED: AtomicUsize = AtomicUsize::new(0);
+        static DELIVERED: AtomicUsize = AtomicUsize::new(0);
+        unsafe extern "C" fn on_uncaptured(
+            _d: *const WGPUDevice,
+            _t: WGPUErrorType,
+            _m: WGPUStringView,
+            _u1: *mut core::ffi::c_void,
+            _u2: *mut core::ffi::c_void,
+        ) {
+            UNCAPPED.fetch_add(1, Ordering::SeqCst);
+        }
+        unsafe extern "C" fn on_map(
+            _s: WGPUMapAsyncStatus,
+            _m: WGPUStringView,
+            _u1: *mut core::ffi::c_void,
+            _u2: *mut core::ffi::c_void,
+        ) {
+            DELIVERED.fetch_add(1, Ordering::SeqCst);
+        }
+
+        let instance = common::make_instance();
+        let adapters = enumerate(instance);
+        let Some(&adapter) = adapters.first() else {
+            release_adapters(&adapters);
+            common::release_instance(instance);
+            return;
+        };
+        let device = {
+            let mut slot: usize = 0;
+            unsafe extern "C" fn on_device(
+                _status: WGPURequestDeviceStatus,
+                device: WGPUDevice,
+                _m: WGPUStringView,
+                u1: *mut core::ffi::c_void,
+                _u2: *mut core::ffi::c_void,
+            ) {
+                *(u1 as *mut usize) = device as usize;
+            }
+            let mut ddesc = zeroed::<WGPUDeviceDescriptor>();
+            ddesc.uncapturedErrorCallbackInfo.callback = Some(on_uncaptured);
+            ddesc.deviceLostCallbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
+            let mut cb = zeroed::<WGPURequestDeviceCallbackInfo>();
+            cb.mode = WGPUCallbackMode_AllowSpontaneous;
+            cb.callback = Some(on_device);
+            cb.userdata1 = &mut slot as *mut usize as *mut core::ffi::c_void;
+            wgpu_packer::wgpuAdapterRequestDevice(adapter, Some(&ddesc), cb);
+            slot as WGPUDevice
+        };
+        assert!(!device.is_null());
+
+        // No MAP usage: synchronous validation error at map time.
+        let mut bdesc = zeroed::<WGPUBufferDescriptor>();
+        bdesc.size = 16;
+        bdesc.usage = WGPUBufferUsage_CopySrc;
+        let buffer = wgpu_packer::wgpuDeviceCreateBuffer(device, Some(&bdesc));
+        assert!(!buffer.is_null());
+
+        let mut map_cb = zeroed::<WGPUBufferMapCallbackInfo>();
+        map_cb.mode = WGPUCallbackMode_AllowSpontaneous; // synchronous delivery
+        map_cb.callback = Some(on_map);
+        let future = wgpu_packer::wgpuBufferMapAsync(buffer, WGPUMapMode_Write, 0, 16, map_cb);
+        assert_ne!(future.id, 0, "a real future is returned");
+        assert_eq!(
+            DELIVERED.load(Ordering::SeqCst),
+            1,
+            "exactly one callback delivery"
+        );
+        assert_eq!(
+            UNCAPPED.load(Ordering::SeqCst),
+            0,
+            "no second report on the error sink"
+        );
+
+        wgpu_packer::wgpuBufferRelease(buffer);
+        wgpu_packer::wgpuDeviceRelease(device);
+        release_adapters(&adapters);
+        common::release_instance(instance);
+    }
+}
+
+/// The INIT macros set `.mode` = 0. The packer accepts it as WaitAnyOnly
+/// (with a warning) instead of aborting: the future is real and its
+/// callback is delivered through a wait.
+#[test]
+fn callback_mode_zero_from_init_macros_is_accepted() {
+    unsafe {
+        let instance = common::make_instance();
+        let mut slot: usize = 0;
+        unsafe extern "C" fn on_adapter(
+            _status: WGPURequestAdapterStatus,
+            adapter: WGPUAdapter,
+            _m: WGPUStringView,
+            u1: *mut core::ffi::c_void,
+            _u2: *mut core::ffi::c_void,
+        ) {
+            *(u1 as *mut usize) = adapter as usize;
+        }
+        let mut cb = zeroed::<WGPURequestAdapterCallbackInfo>(); // mode = 0
+        cb.callback = Some(on_adapter);
+        cb.userdata1 = &mut slot as *mut usize as *mut core::ffi::c_void;
+        let future = wgpu_packer::wgpuInstanceRequestAdapter(instance, None, cb);
+        assert_ne!(future.id, 0, "mode 0 must not abort: a real future is returned");
+
+        // WaitAnyOnly: delivery through a wait; timeout 0 polls once.
+        let mut info = WGPUFutureWaitInfo {
+            future,
+            completed: 0,
+        };
+        assert_eq!(
+            wgpu_packer::wgpuInstanceWaitAny(instance, 1, &mut info, 0),
+            WGPUWaitStatus_Success,
+            "the pending WaitAnyOnly delivery completes in a wait"
+        );
+        assert_eq!(info.completed, 1);
+        assert_ne!(slot, 0, "the adapter handle was delivered");
+        wgpu_packer::wgpuAdapterRelease(slot as WGPUAdapter);
         common::release_instance(instance);
     }
 }

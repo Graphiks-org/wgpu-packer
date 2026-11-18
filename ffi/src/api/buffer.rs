@@ -183,18 +183,18 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     mode: native::WGPUMapMode,
     offset: usize,
     size: usize,
-    callback_info: native::WGPUBufferMapCallbackInfo,
+    mut callback_info: native::WGPUBufferMapCallbackInfo,
 ) -> native::WGPUFuture {
-    let (buffer_id, context, error_sink, map_state, queue_id) = {
+    let (buffer_id, context, map_state, queue_id) = {
         let buffer = buffer.as_ref().expect("invalid buffer");
         (
             buffer.id,
             &buffer.context,
-            &buffer.error_sink,
             buffer.data.map_state.clone(),
             buffer.data.queue,
         )
     };
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -266,24 +266,14 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         },
         operation,
     ) {
-        // Synchronous rejection (validation): error routed as before AND the
-        // future is completed anyway — awaiting it must not
-        // block forever.
-        let message = format_error(&cause);
-        handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
-        *map_state.lock() = native::WGPUBufferMapState_Unmapped;
-        let status = native::WGPUMapAsyncStatus_Error;
-        crate::future::complete(
-            future_id,
-            Box::new(move || {
-                callback(
-                    status,
-                    str_into_string_view(&message),
-                    userdata.get_1(),
-                    userdata.get_2(),
-                );
-            }),
-        );
+        // wgpu-core's `map_async` contract: "op.callback is guaranteed to be
+        // called, regardless of the outcome" — on a synchronous rejection it
+        // takes the callback out of the operation and invokes it with Err
+        // BEFORE returning. The closure above has therefore already updated
+        // the map state and completed the future: the C callback is the
+        // single delivery channel (webgpu.h). Routing the error to the sink
+        // as well made one rejection arrive twice (callback AND error scope).
+        log::debug!("wgpuBufferMapAsync: synchronous rejection: {cause}");
     } else {
         *map_state.lock() = native::WGPUBufferMapState_Pending;
     };

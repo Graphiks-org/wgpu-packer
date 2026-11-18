@@ -1068,6 +1068,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RGBA16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         // wgpu.h extended
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
+        native::WGPUNativeTextureFormat_P010 => Some(wgt::TextureFormat::P010),
         _ => panic!("Unknown texture format"),
     }
 }
@@ -2256,6 +2257,16 @@ pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Regression (independent review): the P010 constant and feature are
+    /// advertised, but map_texture_format panicked on the very value that
+    /// to_native_texture_format emits.
+    #[test]
+    fn p010_round_trips() {
+        let native =
+            to_native_texture_format(wgt::TextureFormat::P010).expect("P010 has a constant");
+        assert_eq!(map_texture_format(native), Some(wgt::TextureFormat::P010));
+    }
 
     #[test]
     fn texture_usage_flags_roundtrip() {

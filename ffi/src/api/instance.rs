@@ -216,7 +216,7 @@ pub unsafe extern "C" fn wgpuInstanceProcessEvents(instance: native::WGPUInstanc
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     instance: native::WGPUInstance,
     options: Option<&native::WGPURequestAdapterOptions>,
-    callback_info: native::WGPURequestAdapterCallbackInfo,
+    mut callback_info: native::WGPURequestAdapterCallbackInfo,
 ) -> native::WGPUFuture {
     let instance_ref = instance.as_ref().expect("invalid instance");
     let context = &instance_ref.context;
@@ -224,6 +224,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     // it back; released with the adapter.
     Arc::increment_strong_count(instance);
     let instance_arc = Arc::from_raw(instance as *const WGPUInstanceImpl);
+    future::normalize_callback_mode(&mut callback_info.mode);
     future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -486,18 +487,34 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
         if !completed.is_empty() {
             // Success as soon as at least one future is complete; the timeout does
             // not cover the callback firing phase (webgpu.h Wait-Any).
+            // The flags are WRITTEN for every entry (0 or 1): webgpu.h
+            // lets the caller reuse the array across calls, and a stale 1
+            // from a previous wait would report a completion that did not
+            // happen.
             for info in infos.iter_mut() {
-                if completed.contains(&info.future.id) {
-                    info.completed = 1;
-                }
+                info.completed = if completed.contains(&info.future.id) {
+                    1
+                } else {
+                    0
+                };
             }
             payloads.into_iter().for_each(|(_, payload)| payload());
             return native::WGPUWaitStatus_Success;
         }
 
         match deadline {
-            _ if timeout_ns == 0 => return native::WGPUWaitStatus_TimedOut,
+            _ if timeout_ns == 0 => {
+                // No completion: the flags must still be written — a reused
+                // array must not keep a stale 1 (webgpu.h Wait-Any).
+                for info in infos.iter_mut() {
+                    info.completed = 0;
+                }
+                return native::WGPUWaitStatus_TimedOut
+            }
             Some(deadline) if Instant::now() >= deadline => {
+                for info in infos.iter_mut() {
+                    info.completed = 0;
+                }
                 return native::WGPUWaitStatus_TimedOut
             }
             _ => std::thread::sleep(WAIT_POLL_SLEEP),

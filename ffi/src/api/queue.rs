@@ -16,12 +16,13 @@ use crate::native;
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     queue: native::WGPUQueue,
-    callback_info: native::WGPUQueueWorkDoneCallbackInfo,
+    mut callback_info: native::WGPUQueueWorkDoneCallbackInfo,
 ) -> native::WGPUFuture {
     let (queue_id, context) = {
         let queue = queue.as_ref().expect("invalid queue");
         (queue.queue.id, &queue.queue.context)
     };
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);

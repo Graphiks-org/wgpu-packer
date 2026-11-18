@@ -78,8 +78,8 @@ Android: `-llog -landroid` · Windows: `user32 gdi32 dxgi d3d12`.
   as the operation completes — before the return for a synchronously
   resolved operation), `AllowProcessEvents` (delivered on the instance's
   next event processing) or `WaitAnyOnly` (delivered only by a wait
-  covering the future). The `INIT` macro sets 0, which is **invalid**: the
-  call panics.
+  covering the future). The `INIT` macro sets 0: accepted as `WaitAnyOnly`
+  with a warning — set an explicit mode when you want another behaviour.
 - `wgpuAdapterRequestDevice` and async pipeline creations are
   **synchronous** internally: with `AllowSpontaneous`, the callback fires
   before the call returns.

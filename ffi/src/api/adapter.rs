@@ -35,25 +35,15 @@ pub unsafe extern "C" fn wgpuAdapterGetFeatures(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
-    limits: Option<&mut native::WGPULimits>,
-) -> native::WGPUBool {
-    let (adapter_id, context, adapter_arc) = {
-        let adapter_ref = adapter.as_ref().expect("invalid adapter");
-        // Strong reference kept by the device so wgpuDeviceGetAdapter can
-        // hand it back; released with the device.
-        Arc::increment_strong_count(adapter);
-        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
-        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
-    };
-    let limits = limits.expect("invalid return pointer \"limits\"");
-
-    let wgt_limits = context.adapter_limits(adapter_id);
+    mut limits: Option<&mut native::WGPULimits>,
+) -> native::WGPUStatus {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let wgt_limits = adapter.context.adapter_limits(adapter.id);
+    let limits = limits.as_mut().expect("invalid return pointer \"limits\"");
     conv::write_limits_struct(wgt_limits, limits);
-
-    // The return value means "the chained WGPUChainedStructOut entries were
-    // filled". This packer fills none: write_limits_struct only writes the
-    // NativeLimits link when the caller already chained it. Report that.
-    false as native::WGPUBool
+    // webgpu.h declares WGPUStatus (Success = 1, Error = 2): the limits and
+    // any NativeLimits chain entry the caller set up are written above.
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
@@ -77,15 +67,8 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
 ) -> native::WGPUBool {
-    let (adapter_id, context, adapter_arc) = {
-        let adapter_ref = adapter.as_ref().expect("invalid adapter");
-        // Strong reference kept by the device so wgpuDeviceGetAdapter can
-        // hand it back; released with the device.
-        Arc::increment_strong_count(adapter);
-        let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
-        (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
-    };
-    let adapter_features = context.adapter_features(adapter_id);
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let adapter_features = adapter.context.adapter_features(adapter.id);
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
@@ -107,7 +90,7 @@ pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAd
 pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     adapter: native::WGPUAdapter,
     descriptor: Option<&native::WGPUDeviceDescriptor>,
-    callback_info: native::WGPURequestDeviceCallbackInfo,
+    mut callback_info: native::WGPURequestDeviceCallbackInfo,
 ) -> native::WGPUFuture {
     let (adapter_id, context, adapter_arc) = {
         let adapter_ref = adapter.as_ref().expect("invalid adapter");
@@ -117,6 +100,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         let adapter_arc = Arc::from_raw(adapter as *const WGPUAdapterImpl);
         (adapter_ref.id, adapter_ref.context.clone(), adapter_arc)
     };
+    future::normalize_callback_mode(&mut callback_info.mode);
     future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -130,17 +114,15 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 map_device_descriptor((descriptor, base_limits),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
-            future::validate_callback_mode(descriptor.deviceLostCallbackInfo.mode);
+            // Mode 0 (INIT macro) normalizes to WaitAnyOnly + warning,
+            // like every other CallbackInfo.
+            let device_lost_mode =
+                future::effective_callback_mode(descriptor.deviceLostCallbackInfo.mode);
             let device_lost_handler = DeviceLostCallback {
                 callback: descriptor.deviceLostCallbackInfo.callback,
                 userdata: new_userdata!(descriptor.deviceLostCallbackInfo),
             };
-            (
-                desc,
-                device_lost_handler,
-                descriptor.deviceLostCallbackInfo.mode,
-                error_callback,
-            )
+            (desc, device_lost_handler, device_lost_mode, error_callback)
         }
         None => (
             wgt::DeviceDescriptor {

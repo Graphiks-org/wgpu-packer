@@ -101,7 +101,8 @@ pub(crate) fn owner_of(context: &Arc<Context>) -> usize {
 }
 
 /// webgpu.h: the mode of a CallbackInfo "Has no default" — 0 (set by the
-/// INIT macro) or any value outside 1/2/3 is a consumer bug.
+/// INIT macros) is accepted as `WaitAnyOnly` with a warning; any other
+/// value outside the enum is a consumer bug.
 pub(crate) fn validate_callback_mode(mode: native::WGPUCallbackMode) {
     match mode {
         native::WGPUCallbackMode_WaitAnyOnly
@@ -112,6 +113,30 @@ pub(crate) fn validate_callback_mode(mode: native::WGPUCallbackMode) {
 }
 
 /// Registers a pending future and returns its id (never 0).
+/// Normalizes `.mode` in place: 0 — what every `WGPU_*_CALLBACK_INFO_INIT`
+/// macro produces — becomes `WaitAnyOnly`, the header's lowest mode, with a
+/// warning. A consumer that forgot the mode loses nothing but spontaneity;
+/// before this, the call aborted the process.
+pub(crate) fn normalize_callback_mode(mode: &mut native::WGPUCallbackMode) {
+    if *mode as u32 == 0 {
+        log::warn!(
+            "callback mode 0 (set by the INIT macros) is treated as WaitAnyOnly; \
+             set an explicit WGPUCallbackMode"
+        );
+        *mode = native::WGPUCallbackMode_WaitAnyOnly;
+    }
+}
+
+/// Validate + normalize, value form (modes read through a shared
+/// reference, e.g. inside a descriptor).
+pub(crate) fn effective_callback_mode(
+    mut mode: native::WGPUCallbackMode,
+) -> native::WGPUCallbackMode {
+    normalize_callback_mode(&mut mode);
+    validate_callback_mode(mode);
+    mode
+}
+
 pub(crate) fn register(
     context: &Arc<Context>,
     mode: native::WGPUCallbackMode,

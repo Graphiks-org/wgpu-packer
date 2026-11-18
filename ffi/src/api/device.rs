@@ -265,13 +265,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
 pub unsafe extern "C" fn wgpuDeviceCreateComputePipelineAsync(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUComputePipelineDescriptor>,
-    callback_info: native::WGPUCreateComputePipelineAsyncCallbackInfo,
+    mut callback_info: native::WGPUCreateComputePipelineAsyncCallbackInfo,
 ) -> native::WGPUFuture {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context, &device.error_sink)
     };
     let descriptor = descriptor.expect("invalid descriptor");
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -651,13 +652,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPURenderPipelineDescriptor>,
-    callback_info: native::WGPUCreateRenderPipelineAsyncCallbackInfo,
+    mut callback_info: native::WGPUCreateRenderPipelineAsyncCallbackInfo,
 ) -> native::WGPUFuture {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context, &device.error_sink)
     };
     let descriptor = descriptor.expect("invalid descriptor");
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
@@ -1057,24 +1059,17 @@ pub unsafe extern "C" fn wgpuDeviceStopGraphicsDebuggerCapture(device: native::W
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: native::WGPUDevice,
-    limits: Option<&mut native::WGPULimits>,
-) -> native::WGPUBool {
-    let (device_id, context) = {
-        let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context)
-    };
-    let limits = limits.expect("invalid return pointer \"limits\"");
-
-    let wgt_limits = context.device_limits(device_id);
+    mut limits: Option<&mut native::WGPULimits>,
+) -> native::WGPUStatus {
+    let device = device.as_ref().expect("invalid device");
+    let wgt_limits = device.context.device_limits(device.id);
+    let limits = limits.as_mut().expect("invalid return pointer \"limits\"");
     conv::write_limits_struct(wgt_limits, limits);
-
-    // The return value means "the chained WGPUChainedStructOut entries were
-    // filled". This packer fills none: write_limits_struct only writes the
-    // NativeLimits link when the caller already chained it. Report that.
-    false as native::WGPUBool
+    // webgpu.h declares WGPUStatus (Success = 1, Error = 2): the limits and
+    // any NativeLimits chain entry the caller set up are written above.
+    native::WGPUStatus_Success
 }
 
-#[no_mangle]
 /// Returns the adapter this device was requested from (Dawn's
 /// `wgpuDeviceGetAdapter`). The returned handle is a new strong reference the
 /// caller releases with `wgpuAdapterRelease`.
@@ -1183,9 +1178,10 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDevicePopErrorScope(
     device: native::WGPUDevice,
-    callback_info: native::WGPUPopErrorScopeCallbackInfo,
+    mut callback_info: native::WGPUPopErrorScopeCallbackInfo,
 ) -> native::WGPUFuture {
     let device = device.as_ref().expect("invalid device");
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);

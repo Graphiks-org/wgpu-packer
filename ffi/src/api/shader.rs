@@ -26,9 +26,10 @@ pub unsafe extern "C" fn wgpuShaderModuleRelease(shader_module: native::WGPUShad
 #[no_mangle]
 pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
     shader_module: native::WGPUShaderModule,
-    callback_info: native::WGPUCompilationInfoCallbackInfo,
+    mut callback_info: native::WGPUCompilationInfoCallbackInfo,
 ) -> native::WGPUFuture {
     let shader_module = shader_module.as_ref().expect("invalid shader module");
+    crate::future::normalize_callback_mode(&mut callback_info.mode);
     crate::future::validate_callback_mode(callback_info.mode);
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);

@@ -22,6 +22,31 @@ fn main() {
     println!("cargo:rerun-if-env-changed=TARGET");
     println!("cargo:rerun-if-env-changed=BINDGEN_EXTRA_CLANG_ARGS");
 
+    // wgpuGetVersion reads WGPU_NATIVE_VERSION at compile time. The single
+    // source of truth is wgpu-pin.env (WGPU_VERSION.PACKER_VERSION, packed
+    // MSB-first by logging.rs): the version tests and the release manifests
+    // read the same values.
+    let pin_path = manifest_dir.join("..").join("wgpu-pin.env");
+    println!("cargo:rerun-if-changed={}", pin_path.display());
+    let pin = std::fs::read_to_string(&pin_path)
+        .unwrap_or_else(|e| panic!("reading wgpu-pin.env: {e}"));
+    let mut wgpu_version = String::new();
+    let mut packer_version = String::new();
+    for line in pin.lines() {
+        if let Some((key, value)) = line.split_once('=') {
+            match key.trim() {
+                "WGPU_VERSION" => wgpu_version = value.trim().to_owned(),
+                "PACKER_VERSION" => packer_version = value.trim().to_owned(),
+                _ => {}
+            }
+        }
+    }
+    assert!(
+        !wgpu_version.is_empty() && !packer_version.is_empty(),
+        "wgpu-pin.env must define WGPU_VERSION and PACKER_VERSION"
+    );
+    println!("cargo:rustc-env=WGPU_NATIVE_VERSION={wgpu_version}.{packer_version}");
+
     #[rustfmt::skip]
     let types_to_rename = vec![
         ("WGPUAdapter", "WGPUAdapterImpl"),
