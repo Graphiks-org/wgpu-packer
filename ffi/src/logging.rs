@@ -4,24 +4,31 @@ use parking_lot::RwLock;
 
 #[no_mangle]
 pub extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
-    // Take the string of WGPU_NATIVE_VERSION, strip any leading v's, split on dots,
-    // and map the first 4 parts to the bytes of an uint32, consuming MSB first.
-    // e.g. "v4.1"      -> 0x04010000
-    //      "5.4.3.2.1" -> 0x05040302
-    let static_str = match option_env!("WGPU_NATIVE_VERSION") {
-        Some(s) => s.trim().trim_start_matches('v'),
-        None => "",
-    };
-    let mut version: u32 = 0;
-    for (index, part) in (0..).zip(static_str.split('.')) {
-        let versionpart = part.parse::<u32>().unwrap_or_default();
-        let shift: i32 = 8 * (3 - index);
-        if shift < 0 {
-            break;
+    crate::ffi_utils::contain_entry(
+        "wgpuGetVersion",
+        0,
+        || {
+
+        // Take the string of WGPU_NATIVE_VERSION, strip any leading v's, split on dots,
+        // and map the first 4 parts to the bytes of an uint32, consuming MSB first.
+        // e.g. "v4.1"      -> 0x04010000
+        //      "5.4.3.2.1" -> 0x05040302
+        let static_str = match option_env!("WGPU_NATIVE_VERSION") {
+            Some(s) => s.trim().trim_start_matches('v'),
+            None => "",
+        };
+        let mut version: u32 = 0;
+        for (index, part) in (0..).zip(static_str.split('.')) {
+            let versionpart = part.parse::<u32>().unwrap_or_default();
+            let shift: i32 = 8 * (3 - index);
+            if shift < 0 {
+                break;
+            }
+            version += versionpart << shift;
         }
-        version += versionpart << shift;
-    }
-    version
+        version
+        },
+    )
 }
 
 struct Logger;
@@ -75,24 +82,38 @@ pub extern "C" fn wgpuSetLogCallback(
     callback: native::WGPULogCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let mut logger = LOGGER_INFO.write();
-    logger.callback = callback;
-    logger.userdata = userdata;
-    if !logger.initialized {
-        logger.initialized = true;
-        // A host process may already have installed a `log` logger (a Rust
-        // host, another library): the packer's callback then never fires,
-        // but the call must not abort.
-        let _ = log::set_logger(&Logger);
-        if log::max_level() == LevelFilter::Off {
-            log::set_max_level(LevelFilter::Warn);
+    crate::ffi_utils::contain_entry(
+        "wgpuSetLogCallback",
+        (),
+        || {
+
+        let mut logger = LOGGER_INFO.write();
+        logger.callback = callback;
+        logger.userdata = userdata;
+        if !logger.initialized {
+            logger.initialized = true;
+            // A host process may already have installed a `log` logger (a Rust
+            // host, another library): the packer's callback then never fires,
+            // but the call must not abort.
+            let _ = log::set_logger(&Logger);
+            if log::max_level() == LevelFilter::Off {
+                log::set_max_level(LevelFilter::Warn);
+            }
         }
-    }
+        },
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuSetLogLevel(level: native::WGPULogLevel) {
-    log::set_max_level(map_log_level(level));
+    crate::ffi_utils::contain_entry(
+        "wgpuSetLogLevel",
+        (),
+        || {
+
+        log::set_max_level(map_log_level(level));
+        },
+    )
 }
 
 map_enum!(

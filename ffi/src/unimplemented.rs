@@ -1,6 +1,6 @@
 //! Deliberately unimplemented stubs: every call raises `unimplemented!()`
 //! (abort on the consumer side, GUIDE §6). Reasons, verified in the sources
-//! of wgpu-core/wgpu-types/naga 29:
+//! of wgpu-core/wgpu-types/naga 30:
 //!
 //! - `wgpuInstanceGetWGSLLanguageFeatures` / `wgpuInstanceHasWGSLLanguageFeature`
 //!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgt/naga 29 API
@@ -17,30 +17,67 @@ pub extern "C" fn wgpuInstanceGetWGSLLanguageFeatures(
     _instance: native::WGPUInstance,
     _features: *mut native::WGPUSupportedWGSLLanguageFeatures,
 ) -> native::WGPUStatus {
-    unimplemented!();
+    crate::ffi_utils::contain_entry(
+        "wgpuInstanceGetWGSLLanguageFeatures",
+        native::WGPUStatus_Error,
+        || {
+
+        unimplemented!();
+        },
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuInstanceHasWGSLLanguageFeature(
     _instance: native::WGPUInstance,
     _feature: native::WGPUWGSLLanguageFeatureName,
-) -> bool {
-    unimplemented!();
+) -> native::WGPUBool {
+    // webgpu.h declares WGPUBool (c_uint): the stub used to return a Rust
+    // bool — a 1-byte value where the caller reads 4 (ABI mismatch).
+    crate::ffi_utils::contain_entry(
+        "wgpuInstanceHasWGSLLanguageFeature",
+        0,
+        || {
+
+        unimplemented!();
+        },
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     _supported_wgsl_language_features: native::WGPUSupportedWGSLLanguageFeatures,
 ) {
-    unimplemented!();
+    crate::ffi_utils::contain_entry(
+        "wgpuSupportedWGSLLanguageFeaturesFreeMembers",
+        (),
+        || {
+
+        unimplemented!();
+        },
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuExternalTextureAddRef(_external_texture: native::WGPUExternalTexture) {
-    unimplemented!();
+    crate::ffi_utils::contain_entry(
+        "wgpuExternalTextureAddRef",
+        (),
+        || {
+
+        unimplemented!();
+        },
+    )
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuExternalTextureRelease(_external_texture: native::WGPUExternalTexture) {
-    unimplemented!();
+    crate::ffi_utils::contain_entry(
+        "wgpuExternalTextureRelease",
+        (),
+        || {
+
+        unimplemented!();
+        },
+    )
 }

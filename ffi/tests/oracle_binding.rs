@@ -1346,6 +1346,31 @@ fn map_async_validation_error_single_channel() {
     }
 }
 
+/// D2-A: every entry point contains its panics at the ABI boundary — a
+/// null handle (the zero-initialized C idiom) returns the type's error
+/// value instead of killing the process.
+#[test]
+fn null_handles_return_error_values_not_aborts() {
+    unsafe {
+        let mut info = zeroed::<WGPUAdapterInfo>();
+        assert_eq!(
+            wgpu_packer::wgpuAdapterGetInfo(std::ptr::null(), Some(&mut info)),
+            WGPUStatus_Error
+        );
+        assert!(wgpu_packer::wgpuDeviceCreateBuffer(std::ptr::null(), None).is_null());
+        let mut limits = zeroed::<WGPULimits>();
+        assert_eq!(
+            wgpu_packer::wgpuDeviceGetLimits(std::ptr::null(), Some(&mut limits)),
+            WGPUStatus_Error
+        );
+        // Unimplemented stubs no longer abort either: contained + error value.
+        assert_eq!(
+            wgpu_packer::wgpuInstanceHasWGSLLanguageFeature(std::ptr::null(), 0),
+            0
+        );
+    }
+}
+
 /// The INIT macros set `.mode` = 0. The packer accepts it as WaitAnyOnly
 /// (with a warning) instead of aborting: the future is real and its
 /// callback is delivered through a wait.

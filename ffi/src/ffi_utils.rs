@@ -10,9 +10,24 @@ pub fn catch_unwind_contained<T>(name: &str, f: impl FnOnce() -> T) -> Option<T>
                 .map(|s| s.to_string())
                 .or_else(|| payload.downcast_ref::<String>().cloned())
                 .unwrap_or_else(|| "<non-textual panic>".into());
-            eprintln!("[wgpu_packer] panic contained in {name}: {msg}");
+            log::error!("panic contained in {name}: {msg}");
         })
         .ok()
+}
+
+/// The uniform FFI boundary: runs the entry point's body with any panic
+/// contained (no Rust panic crosses `extern "C"` — that is a process
+/// abort). On a contained panic the call logs and returns `fallback`:
+/// the safest possible answer for its return type (NULL handle, error
+/// status, 0, false, the null future...).
+///
+/// `catch_unwind` is free when nothing panics; `panic = "unwind"` is the
+/// release profile of this workspace.
+pub fn contain_entry<T>(name: &str, fallback: T, f: impl FnOnce() -> T) -> T {
+    match catch_unwind_contained(name, f) {
+        Some(value) => value,
+        None => fallback,
+    }
 }
 
 /// Test probe: panic deliberately contained by the FFI wrapper.

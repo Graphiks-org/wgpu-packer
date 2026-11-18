@@ -55,13 +55,27 @@ impl std::error::Error for MaxDrawCountExceeded {}
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleAddRef(render_bundle: native::WGPURenderBundle) {
-    assert!(!render_bundle.is_null(), "invalid render bundle");
-    Arc::increment_strong_count(render_bundle);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleAddRef",
+        (),
+        || {
+
+        assert!(!render_bundle.is_null(), "invalid render bundle");
+        Arc::increment_strong_count(render_bundle);
+        },
+    )
 }
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleRelease(render_bundle: native::WGPURenderBundle) {
-    assert!(!render_bundle.is_null(), "invalid render bundle");
-    Arc::decrement_strong_count(render_bundle);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleRelease",
+        (),
+        || {
+
+        assert!(!render_bundle.is_null(), "invalid render bundle");
+        Arc::decrement_strong_count(render_bundle);
+        },
+    )
 }
 
 // RenderBundleEncoder methods
@@ -74,18 +88,25 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDraw(
     first_vertex: u32,
     first_instance: u32,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderDraw",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_draw(
-        encoder,
-        vertex_count,
-        instance_count,
-        first_vertex,
-        first_instance,
-    );
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_draw(
+            encoder,
+            vertex_count,
+            instance_count,
+            first_vertex,
+            first_instance,
+        );
+        },
+    )
 }
 
 #[no_mangle]
@@ -97,19 +118,26 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexed(
     base_vertex: i32,
     first_instance: u32,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderDrawIndexed",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_draw_indexed(
-        encoder,
-        index_count,
-        instance_count,
-        first_index,
-        base_vertex,
-        first_instance,
-    );
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_draw_indexed(
+            encoder,
+            index_count,
+            instance_count,
+            first_index,
+            base_vertex,
+            first_instance,
+        );
+        },
+    )
 }
 
 #[no_mangle]
@@ -118,20 +146,27 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexedIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let indirect_buffer_id = indirect_buffer
-        .as_ref()
-        .expect("invalid indirect buffer")
-        .id;
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderDrawIndexedIndirect",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
-        encoder,
-        indirect_buffer_id,
-        indirect_offset,
-    );
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
+            encoder,
+            indirect_buffer_id,
+            indirect_offset,
+        );
+        },
+    )
 }
 
 #[no_mangle]
@@ -140,16 +175,23 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let indirect_buffer_id = indirect_buffer
-        .as_ref()
-        .expect("invalid indirect buffer")
-        .id;
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderDrawIndirect",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_draw_indirect(encoder, indirect_buffer_id, indirect_offset);
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_draw_indirect(encoder, indirect_buffer_id, indirect_offset);
+        },
+    )
 }
 
 #[no_mangle]
@@ -157,39 +199,46 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
     bundle: native::WGPURenderBundleEncoder,
     descriptor: Option<&native::WGPURenderBundleDescriptor>,
 ) -> native::WGPURenderBundle {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let context = &bundle.context;
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.take().expect("invalid render bundle");
-    let mut encoder = Box::from_raw(encoder);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderFinish",
+        std::ptr::null(),
+        || {
 
-    let desc = match descriptor {
-        Some(descriptor) => wgt::RenderBundleDescriptor {
-            label: string_view_into_label(descriptor.label),
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let context = &bundle.context;
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.take().expect("invalid render bundle");
+        let mut encoder = Box::from_raw(encoder);
+
+        let desc = match descriptor {
+            Some(descriptor) => wgt::RenderBundleDescriptor {
+                label: string_view_into_label(descriptor.label),
+            },
+            None => wgt::RenderBundleDescriptor::default(),
+        };
+
+        let (render_bundle_id, error) = context.render_bundle_encoder_finish(&mut *encoder, &desc, None);
+        if let Some(cause) = error {
+            // WebGPU semantics: content validation of a render bundle is
+            // a record-time error, delivered to the sink (current error scope or
+            // uncaptured error handler) — never fatal. wgc assigns an id
+            // `Fallible::Invalid`: finish returns a valid handle for invalid
+            // content, and a later execution (executeBundles) will report
+            // the error normally.
+            handle_error(
+                &bundle.error_sink,
+                cause,
+                None,
+                "wgpuRenderBundleEncoderFinish",
+            );
+        }
+
+        Arc::into_raw(Arc::new(WGPURenderBundleImpl {
+            context: context.clone(),
+            id: render_bundle_id,
+        }))
         },
-        None => wgt::RenderBundleDescriptor::default(),
-    };
-
-    let (render_bundle_id, error) = context.render_bundle_encoder_finish(&mut *encoder, &desc, None);
-    if let Some(cause) = error {
-        // WebGPU semantics: content validation of a render bundle is
-        // a record-time error, delivered to the sink (current error scope or
-        // uncaptured error handler) — never fatal. wgc assigns an id
-        // `Fallible::Invalid`: finish returns a valid handle for invalid
-        // content, and a later execution (executeBundles) will report
-        // the error normally.
-        handle_error(
-            &bundle.error_sink,
-            cause,
-            None,
-            "wgpuRenderBundleEncoderFinish",
-        );
-    }
-
-    Arc::into_raw(Arc::new(WGPURenderBundleImpl {
-        context: context.clone(),
-        id: render_bundle_id,
-    }))
+    )
 }
 
 #[no_mangle]
@@ -197,30 +246,44 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderInsertDebugMarker(
     _bundle: native::WGPURenderBundleEncoder,
     _marker_label: native::WGPUStringView,
 ) {
-    // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
-    // Commenting out until it's actually implemented.
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderInsertDebugMarker",
+        (),
+        || {
 
-    // let bundle = bundle.as_ref().expect("invalid render bundle");
-    // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    // let encoder = encoder.expect("invalid render bundle");
-    // let encoder = encoder.as_mut().unwrap();
+        // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
+        // Commenting out until it's actually implemented.
 
-    // bundle_ffi::wgpu_render_bundle_insert_debug_marker(encoder, marker_label);
+        // let bundle = bundle.as_ref().expect("invalid render bundle");
+        // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        // let encoder = encoder.expect("invalid render bundle");
+        // let encoder = encoder.as_mut().unwrap();
+
+        // bundle_ffi::wgpu_render_bundle_insert_debug_marker(encoder, marker_label);
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleEncoderPopDebugGroup(
     _bundle: native::WGPURenderBundleEncoder,
 ) {
-    // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
-    // Commenting out until it's actually implemented.
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderPopDebugGroup",
+        (),
+        || {
 
-    // let bundle = bundle.as_ref().expect("invalid render bundle");
-    // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    // let encoder = encoder.expect("invalid render bundle");
-    // let encoder = encoder.as_mut().unwrap();
+        // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
+        // Commenting out until it's actually implemented.
 
-    // bundle_ffi::wgpu_render_bundle_pop_debug_group(encoder);
+        // let bundle = bundle.as_ref().expect("invalid render bundle");
+        // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        // let encoder = encoder.expect("invalid render bundle");
+        // let encoder = encoder.as_mut().unwrap();
+
+        // bundle_ffi::wgpu_render_bundle_pop_debug_group(encoder);
+        },
+    )
 }
 
 #[no_mangle]
@@ -228,15 +291,22 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderPushDebugGroup(
     _bundle: native::WGPURenderBundleEncoder,
     _group_label: native::WGPUStringView,
 ) {
-    // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
-    // Commenting out until it's actually implemented.
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderPushDebugGroup",
+        (),
+        || {
 
-    // let bundle = bundle.as_ref().expect("invalid render bundle");
-    // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    // let encoder = encoder.expect("invalid render bundle");
-    // let encoder = encoder.as_mut().unwrap();
+        // These functions are not implemented in wgpu-core, and the API is incompatible with the new WGPUStringView.
+        // Commenting out until it's actually implemented.
 
-    // bundle_ffi::wgpu_render_bundle_push_debug_group(encoder, group_label);
+        // let bundle = bundle.as_ref().expect("invalid render bundle");
+        // let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        // let encoder = encoder.expect("invalid render bundle");
+        // let encoder = encoder.as_mut().unwrap();
+
+        // bundle_ffi::wgpu_render_bundle_push_debug_group(encoder, group_label);
+        },
+    )
 }
 
 #[no_mangle]
@@ -247,19 +317,26 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     dynamic_offset_count: usize,
     dynamic_offsets: *const u32,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let bind_group_id = group.as_ref().map(|bg| bg.id);
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderSetBindGroup",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_set_bind_group(
-        encoder,
-        group_index,
-        bind_group_id,
-        dynamic_offsets,
-        dynamic_offset_count,
-    );
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let bind_group_id = group.as_ref().map(|bg| bg.id);
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_set_bind_group(
+            encoder,
+            group_index,
+            bind_group_id,
+            dynamic_offsets,
+            dynamic_offset_count,
+        );
+        },
+    )
 }
 
 #[no_mangle]
@@ -270,23 +347,30 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderSetIndexBuffer",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_set_index_buffer(
-        encoder,
-        buffer_id,
-        conv::map_index_format(format).expect("invalid index format"),
-        offset,
-        match size {
-            0 => panic!("invalid size"),
-            conv::WGPU_WHOLE_SIZE => None,
-            _ => Some(NonZeroU64::new_unchecked(size)),
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_set_index_buffer(
+            encoder,
+            buffer_id,
+            conv::map_index_format(format).expect("invalid index format"),
+            offset,
+            match size {
+                0 => panic!("invalid size"),
+                conv::WGPU_WHOLE_SIZE => None,
+                _ => Some(NonZeroU64::new_unchecked(size)),
+            },
+        );
         },
-    );
+    )
 }
 
 #[no_mangle]
@@ -294,13 +378,20 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPipeline(
     bundle: native::WGPURenderBundleEncoder,
     pipeline: native::WGPURenderPipeline,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let pipeline_id = pipeline.as_ref().expect("invalid render pipeline").id;
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderSetPipeline",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_set_pipeline(encoder, pipeline_id);
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let pipeline_id = pipeline.as_ref().expect("invalid render pipeline").id;
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_set_pipeline(encoder, pipeline_id);
+        },
+    )
 }
 
 #[no_mangle]
@@ -311,44 +402,65 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let buffer_id = buffer.as_ref().map(|buffer| buffer.id);
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderSetVertexBuffer",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
-        encoder,
-        slot,
-        buffer_id,
-        offset,
-        match size {
-            0 => panic!("invalid size"),
-            conv::WGPU_WHOLE_SIZE => None,
-            _ => Some(NonZeroU64::new_unchecked(size)),
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let buffer_id = buffer.as_ref().map(|buffer| buffer.id);
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
+            encoder,
+            slot,
+            buffer_id,
+            offset,
+            match size {
+                0 => panic!("invalid size"),
+                conv::WGPU_WHOLE_SIZE => None,
+                _ => Some(NonZeroU64::new_unchecked(size)),
+            },
+        );
         },
-    );
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleEncoderAddRef(
     render_bundle_encoder: native::WGPURenderBundleEncoder,
 ) {
-    assert!(
-        !render_bundle_encoder.is_null(),
-        "invalid render bundle encoder"
-    );
-    Arc::increment_strong_count(render_bundle_encoder);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderAddRef",
+        (),
+        || {
+
+        assert!(
+            !render_bundle_encoder.is_null(),
+            "invalid render bundle encoder"
+        );
+        Arc::increment_strong_count(render_bundle_encoder);
+        },
+    )
 }
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleEncoderRelease(
     render_bundle_encoder: native::WGPURenderBundleEncoder,
 ) {
-    assert!(
-        !render_bundle_encoder.is_null(),
-        "invalid render bundle encoder"
-    );
-    Arc::decrement_strong_count(render_bundle_encoder);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderRelease",
+        (),
+        || {
+
+        assert!(
+            !render_bundle_encoder.is_null(),
+            "invalid render bundle encoder"
+        );
+        Arc::decrement_strong_count(render_bundle_encoder);
+        },
+    )
 }
 
 // RenderPassEncoder methods
@@ -358,21 +470,28 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
     pass: native::WGPURenderPassEncoder,
     query_index: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderBeginOcclusionQuery",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_begin_occlusion_query(encoder, query_index)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderBeginOcclusionQuery",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_begin_occlusion_query(encoder, query_index)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderBeginOcclusionQuery",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -383,23 +502,30 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     first_vertex: u32,
     first_instance: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderDraw",
+        (),
+        || {
 
-    check_draw_count(pass, "wgpuRenderPassEncoderDraw");
-    match pass
-        .context
-        .render_pass_draw(
-            encoder,
-            vertex_count,
-            instance_count,
-            first_vertex,
-            first_instance,
-        )
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuRenderPassEncoderDraw"),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDraw");
+        match pass
+            .context
+            .render_pass_draw(
+                encoder,
+                vertex_count,
+                instance_count,
+                first_vertex,
+                first_instance,
+            )
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuRenderPassEncoderDraw"),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -411,26 +537,33 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
     base_vertex: i32,
     first_instance: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderDrawIndexed",
+        (),
+        || {
 
-    check_draw_count(pass, "wgpuRenderPassEncoderDrawIndexed");
-    match pass.context.render_pass_draw_indexed(
-        encoder,
-        index_count,
-        instance_count,
-        first_index,
-        base_vertex,
-        first_instance,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderDrawIndexed",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDrawIndexed");
+        match pass.context.render_pass_draw_indexed(
+            encoder,
+            index_count,
+            instance_count,
+            first_index,
+            base_vertex,
+            first_instance,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderDrawIndexed",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -439,27 +572,34 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let indirect_buffer_id = indirect_buffer
-        .as_ref()
-        .expect("invalid indirect buffer")
-        .id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderDrawIndexedIndirect",
+        (),
+        || {
 
-    check_draw_count(pass, "wgpuRenderPassEncoderDrawIndexedIndirect");
-    match pass.context.render_pass_draw_indexed_indirect(
-        encoder,
-        indirect_buffer_id,
-        indirect_offset,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderDrawIndexedIndirect",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDrawIndexedIndirect");
+        match pass.context.render_pass_draw_indexed_indirect(
+            encoder,
+            indirect_buffer_id,
+            indirect_offset,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderDrawIndexedIndirect",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -468,55 +608,76 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let indirect_buffer_id = indirect_buffer
-        .as_ref()
-        .expect("invalid indirect buffer")
-        .id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderDrawIndirect",
+        (),
+        || {
 
-    check_draw_count(pass, "wgpuRenderPassEncoderDrawIndirect");
-    match pass
-        .context
-        .render_pass_draw_indirect(encoder, indirect_buffer_id, indirect_offset)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderDrawIndirect",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDrawIndirect");
+        match pass
+            .context
+            .render_pass_draw_indirect(encoder, indirect_buffer_id, indirect_offset)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderDrawIndirect",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderEnd",
+        (),
+        || {
 
-    match pass.context.render_pass_end(encoder) {
-        Ok(()) => (),
-        Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuRenderPassEncoderEnd"),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_end(encoder) {
+            Ok(()) => (),
+            Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuRenderPassEncoderEnd"),
+        }
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
     pass: native::WGPURenderPassEncoder,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderEndOcclusionQuery",
+        (),
+        || {
 
-    match pass.context.render_pass_end_occlusion_query(encoder) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderEndOcclusionQuery",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_end_occlusion_query(encoder) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderEndOcclusionQuery",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -525,25 +686,32 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     bundle_count: usize,
     bundles: *const native::WGPURenderBundle,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let bundle_ids = make_slice(bundles, bundle_count)
-        .iter()
-        .map(|v| v.as_ref().expect("invalid render bundle").id)
-        .collect::<SmallVec<[_; 4]>>();
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderExecuteBundles",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_execute_bundles(encoder, &bundle_ids)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderExecuteBundles",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let bundle_ids = make_slice(bundles, bundle_count)
+            .iter()
+            .map(|v| v.as_ref().expect("invalid render bundle").id)
+            .collect::<SmallVec<[_; 4]>>();
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_execute_bundles(encoder, &bundle_ids)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderExecuteBundles",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -551,38 +719,52 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(
     pass: native::WGPURenderPassEncoder,
     marker_label: native::WGPUStringView,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderInsertDebugMarker",
+        (),
+        || {
 
-    match pass.context.render_pass_insert_debug_marker(
-        encoder,
-        string_view_into_str(marker_label).unwrap_or(""),
-        0,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderInsertDebugMarker",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_insert_debug_marker(
+            encoder,
+            string_view_into_str(marker_label).unwrap_or(""),
+            0,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderInsertDebugMarker",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: native::WGPURenderPassEncoder) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderPopDebugGroup",
+        (),
+        || {
 
-    match pass.context.render_pass_pop_debug_group(encoder) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderPopDebugGroup",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_pop_debug_group(encoder) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderPopDebugGroup",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -590,22 +772,29 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
     pass: native::WGPURenderPassEncoder,
     group_label: native::WGPUStringView,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderPushDebugGroup",
+        (),
+        || {
 
-    match pass.context.render_pass_push_debug_group(
-        encoder,
-        string_view_into_str(group_label).unwrap_or(""),
-        0,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderPushDebugGroup",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_push_debug_group(
+            encoder,
+            string_view_into_str(group_label).unwrap_or(""),
+            0,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderPushDebugGroup",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -616,24 +805,31 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     dynamic_offset_count: usize,
     dynamic_offsets: *const u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let bind_group_id = bind_group.as_ref().map(|bg| bg.id);
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetBindGroup",
+        (),
+        || {
 
-    match pass.context.render_pass_set_bind_group(
-        encoder,
-        group_index,
-        bind_group_id,
-        make_slice(dynamic_offsets, dynamic_offset_count),
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetBindGroup",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let bind_group_id = bind_group.as_ref().map(|bg| bg.id);
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_set_bind_group(
+            encoder,
+            group_index,
+            bind_group_id,
+            make_slice(dynamic_offsets, dynamic_offset_count),
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetBindGroup",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -641,21 +837,28 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     pass: native::WGPURenderPassEncoder,
     color: Option<&native::WGPUColor>,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetBlendConstant",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_blend_constant(encoder, conv::map_color(color.expect("invalid color")))
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetBlendConstant",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_blend_constant(encoder, conv::map_color(color.expect("invalid color")))
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetBlendConstant",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -666,29 +869,36 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetIndexBuffer",
+        (),
+        || {
 
-    match pass.context.render_pass_set_index_buffer(
-        encoder,
-        buffer_id,
-        conv::map_index_format(index_format).expect("invalid index format"),
-        offset,
-        match size {
-            0 => panic!("invalid size"),
-            conv::WGPU_WHOLE_SIZE => None,
-            _ => Some(NonZeroU64::new_unchecked(size)),
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_set_index_buffer(
+            encoder,
+            buffer_id,
+            conv::map_index_format(index_format).expect("invalid index format"),
+            offset,
+            match size {
+                0 => panic!("invalid size"),
+                conv::WGPU_WHOLE_SIZE => None,
+                _ => Some(NonZeroU64::new_unchecked(size)),
+            },
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetIndexBuffer",
+            ),
+        }
         },
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetIndexBuffer",
-        ),
-    }
+    )
 }
 
 #[no_mangle]
@@ -696,25 +906,32 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
     pass: native::WGPURenderPassEncoder,
     render_pipeline: native::WGPURenderPipeline,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let render_pipeline_id = render_pipeline
-        .as_ref()
-        .expect("invalid render pipeline")
-        .id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetPipeline",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_pipeline(encoder, render_pipeline_id)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetPipeline",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let render_pipeline_id = render_pipeline
+            .as_ref()
+            .expect("invalid render pipeline")
+            .id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_pipeline(encoder, render_pipeline_id)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetPipeline",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -725,21 +942,28 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     width: u32,
     height: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetScissorRect",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_scissor_rect(encoder, x, y, width, height)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetScissorRect",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_scissor_rect(encoder, x, y, width, height)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetScissorRect",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -747,21 +971,28 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
     pass: native::WGPURenderPassEncoder,
     reference: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetStencilReference",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_stencil_reference(encoder, reference)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetStencilReference",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_stencil_reference(encoder, reference)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetStencilReference",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -772,29 +1003,36 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().map(|buffer| buffer.id);
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetVertexBuffer",
+        (),
+        || {
 
-    match pass.context.render_pass_set_vertex_buffer(
-        encoder,
-        slot,
-        buffer_id,
-        offset,
-        match size {
-            0 => panic!("invalid size"),
-            conv::WGPU_WHOLE_SIZE => None,
-            _ => Some(NonZeroU64::new_unchecked(size)),
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().map(|buffer| buffer.id);
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_set_vertex_buffer(
+            encoder,
+            slot,
+            buffer_id,
+            offset,
+            match size {
+                0 => panic!("invalid size"),
+                conv::WGPU_WHOLE_SIZE => None,
+                _ => Some(NonZeroU64::new_unchecked(size)),
+            },
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetVertexBuffer",
+            ),
+        }
         },
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetVertexBuffer",
-        ),
-    }
+    )
 }
 
 #[no_mangle]
@@ -807,42 +1045,63 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
     min_depth: f32,
     max_depth: f32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetViewport",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_viewport(encoder, x, y, width, height, min_depth, max_depth)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetViewport",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_viewport(encoder, x, y, width, height, min_depth, max_depth)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetViewport",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderAddRef(
     render_pass_encoder: native::WGPURenderPassEncoder,
 ) {
-    assert!(
-        !render_pass_encoder.is_null(),
-        "invalid render pass encoder"
-    );
-    Arc::increment_strong_count(render_pass_encoder);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderAddRef",
+        (),
+        || {
+
+        assert!(
+            !render_pass_encoder.is_null(),
+            "invalid render pass encoder"
+        );
+        Arc::increment_strong_count(render_pass_encoder);
+        },
+    )
 }
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderRelease(
     render_pass_encoder: native::WGPURenderPassEncoder,
 ) {
-    assert!(
-        !render_pass_encoder.is_null(),
-        "invalid render pass encoder"
-    );
-    Arc::decrement_strong_count(render_pass_encoder);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderRelease",
+        (),
+        || {
+
+        assert!(
+            !render_pass_encoder.is_null(),
+            "invalid render pass encoder"
+        );
+        Arc::decrement_strong_count(render_pass_encoder);
+        },
+    )
 }
 
 // RenderPipeline methods
@@ -852,40 +1111,61 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
     render_pipeline: native::WGPURenderPipeline,
     group_index: u32,
 ) -> native::WGPUBindGroupLayout {
-    let (render_pipeline_id, context, error_sink) = {
-        let render_pipeline = render_pipeline.as_ref().expect("invalid render pipeline");
-        (
-            render_pipeline.id,
-            &render_pipeline.context,
-            &render_pipeline.error_sink,
-        )
-    };
-    let (bind_group_layout_id, error) =
-        context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, None);
-    if let Some(cause) = error {
-        handle_error(
-            error_sink,
-            cause,
-            None,
-            "wgpuRenderPipelineGetBindGroupLayout",
-        );
-    }
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPipelineGetBindGroupLayout",
+        std::ptr::null(),
+        || {
 
-    Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
-        context: context.clone(),
-        id: bind_group_layout_id,
-    }))
+        let (render_pipeline_id, context, error_sink) = {
+            let render_pipeline = render_pipeline.as_ref().expect("invalid render pipeline");
+            (
+                render_pipeline.id,
+                &render_pipeline.context,
+                &render_pipeline.error_sink,
+            )
+        };
+        let (bind_group_layout_id, error) =
+            context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, None);
+        if let Some(cause) = error {
+            handle_error(
+                error_sink,
+                cause,
+                None,
+                "wgpuRenderPipelineGetBindGroupLayout",
+            );
+        }
+
+        Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
+            context: context.clone(),
+            id: bind_group_layout_id,
+        }))
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPipelineAddRef(render_pipeline: native::WGPURenderPipeline) {
-    assert!(!render_pipeline.is_null(), "invalid render pipeline");
-    Arc::increment_strong_count(render_pipeline);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPipelineAddRef",
+        (),
+        || {
+
+        assert!(!render_pipeline.is_null(), "invalid render pipeline");
+        Arc::increment_strong_count(render_pipeline);
+        },
+    )
 }
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPipelineRelease(render_pipeline: native::WGPURenderPipeline) {
-    assert!(!render_pipeline.is_null(), "invalid render pipeline");
-    Arc::decrement_strong_count(render_pipeline);
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPipelineRelease",
+        (),
+        || {
+
+        assert!(!render_pipeline.is_null(), "invalid render pipeline");
+        Arc::decrement_strong_count(render_pipeline);
+        },
+    )
 }
 
 #[no_mangle]
@@ -895,21 +1175,28 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     data: *const u8,
     size: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderSetImmediates",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderSetImmediates",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderSetImmediates",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -919,12 +1206,19 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     data: *const u8,
     size: u32,
 ) {
-    let bundle = bundle.as_ref().expect("invalid render bundle");
-    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
-    let encoder = encoder.expect("invalid render bundle");
-    let encoder = encoder.as_mut().unwrap();
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderBundleEncoderSetImmediates",
+        (),
+        || {
 
-    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size, data);
+        let bundle = bundle.as_ref().expect("invalid render bundle");
+        let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+        let encoder = encoder.expect("invalid render bundle");
+        let encoder = encoder.as_mut().unwrap();
+
+        bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size, data);
+        },
+    )
 }
 
 #[no_mangle]
@@ -934,22 +1228,29 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
     offset: u64,
     count: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawIndirect",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_multi_draw_indirect(encoder, buffer_id, offset, count)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderMultiDrawIndirect",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_multi_draw_indirect(encoder, buffer_id, offset, count)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawIndirect",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -959,22 +1260,29 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirect(
     offset: u64,
     count: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawIndexedIndirect",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_multi_draw_indexed_indirect(encoder, buffer_id, offset, count)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderMultiDrawIndexedIndirect",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_multi_draw_indexed_indirect(encoder, buffer_id, offset, count)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawIndexedIndirect",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -986,27 +1294,34 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     count_buffer_offset: u64,
     max_count: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawIndirectCount",
+        (),
+        || {
 
-    match pass.context.render_pass_multi_draw_indirect_count(
-        encoder,
-        buffer_id,
-        offset,
-        count_buffer_id,
-        count_buffer_offset,
-        max_count,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderMultiDrawIndirectCount",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_multi_draw_indirect_count(
+            encoder,
+            buffer_id,
+            offset,
+            count_buffer_id,
+            count_buffer_offset,
+            max_count,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawIndirectCount",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -1018,27 +1333,34 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
     count_buffer_offset: u64,
     max_count: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount",
+        (),
+        || {
 
-    match pass.context.render_pass_multi_draw_indexed_indirect_count(
-        encoder,
-        buffer_id,
-        offset,
-        count_buffer_id,
-        count_buffer_offset,
-        max_count,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+        let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_multi_draw_indexed_indirect_count(
+            encoder,
+            buffer_id,
+            offset,
+            count_buffer_id,
+            count_buffer_offset,
+            max_count,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -1047,44 +1369,58 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
     query_set: native::WGPUQuerySet,
     query_index: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderBeginPipelineStatisticsQuery",
+        (),
+        || {
 
-    match pass.context.render_pass_begin_pipeline_statistics_query(
-        encoder,
-        query_set_id,
-        query_index,
-    ) {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderBeginPipelineStatisticsQuery",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let query_set_id = query_set.as_ref().expect("invalid query set").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass.context.render_pass_begin_pipeline_statistics_query(
+            encoder,
+            query_set_id,
+            query_index,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderBeginPipelineStatisticsQuery",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
     pass: native::WGPURenderPassEncoder,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderEndPipelineStatisticsQuery",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_end_pipeline_statistics_query(encoder)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderEndPipelineStatisticsQuery",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_end_pipeline_statistics_query(encoder)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderEndPipelineStatisticsQuery",
+            ),
+        }
+        },
+    )
 }
 
 #[no_mangle]
@@ -1093,20 +1429,27 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
     query_set: native::WGPUQuerySet,
     query_index: u32,
 ) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderWriteTimestamp",
+        (),
+        || {
 
-    match pass
-        .context
-        .render_pass_write_timestamp(encoder, query_set_id, query_index)
-    {
-        Ok(()) => (),
-        Err(cause) => handle_error(
-            &pass.error_sink,
-            cause,
-            None,
-            "wgpuRenderPassEncoderWriteTimestamp",
-        ),
-    }
+        let pass = pass.as_ref().expect("invalid render pass");
+        let query_set_id = query_set.as_ref().expect("invalid query set").id;
+        let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
+
+        match pass
+            .context
+            .render_pass_write_timestamp(encoder, query_set_id, query_index)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderWriteTimestamp",
+            ),
+        }
+        },
+    )
 }

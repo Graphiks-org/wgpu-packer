@@ -95,6 +95,13 @@ Android: `-llog -landroid` · Windows MSVC: `user32 gdi32 dxgi d3d12 dxguid` · 
   equivalent of ProcessEvents. Unknown, already delivered, null or
   duplicate futures → `WGPUWaitStatus_Error`. Callbacks not delivered at
   instance destruction are silently canceled.
+- **No entry point aborts on a caught panic** (D2 of the independent
+  review): every `extern "C"` boundary contains its panics — a null
+  handle, an invalid enum value or an internal invariant failure logs an
+  error and returns the type's error value (`NULL` handle, error status,
+  0, `false`, the null future). Use-after-release of a handle is memory
+  UB and stays outside this guarantee: respect the 1:1 `Release` contract
+  (§4). Dangling-pointer reads are not catchable panics.
 - Uncaptured GPU errors are **never abort**: with no handler installed,
   the packer's default handler **logs and ignores** (callbacks.rs: "log
   without panicking"), and validation errors from `wgpuQueueSubmit` as well
@@ -110,11 +117,13 @@ Android: `-llog -landroid` · Windows MSVC: `user32 gdi32 dxgi d3d12 dxguid` · 
   future (`wgpuDeviceGetLostFuture`, stable id per device) follows this
   callback's mode.
 
-## 6. Unimplemented functions (call = abort)
+## 6. Unimplemented functions (call = contained error)
 
-These symbols are exported but raise `unimplemented!()` (panic) when called
-in v30.0.1.0 — do not call them from Kotlin. 5 stubs; the reasons are
-detailed in `ffi/src/unimplemented.rs`:
+These symbols are exported but raise `unimplemented!()` when called in
+v30.0.1.0 — do not call them from Kotlin. The panic is contained at the
+ABI boundary (§5): the call logs an error and returns the type's error
+value (`NULL`, `WGPUStatus_Error`, 0), never an abort. 5 stubs; the
+reasons are detailed in `ffi/src/unimplemented.rs`:
 
 wgpuInstanceGetWGSLLanguageFeatures, wgpuInstanceHasWGSLLanguageFeature,
 wgpuSupportedWGSLLanguageFeaturesFreeMembers,
