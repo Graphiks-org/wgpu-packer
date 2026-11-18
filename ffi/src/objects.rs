@@ -85,11 +85,16 @@ impl Drop for WGPUBufferImpl {
 pub struct WGPUCommandBufferImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::CommandBufferId,
-    pub(crate) open: atomic::AtomicBool,
 }
 impl Drop for WGPUCommandBufferImpl {
     fn drop(&mut self) {
-        if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
+        // Unconditional (pass2 finding 12 + independent review): an
+        // encoder-finished-but-never-submitted command buffer used to leak
+        // its hub entry (the old `open` flag skipped the drop), and the
+        // flag made no sense on a shared handle. wgpu-core's registry is
+        // Fallible: the entry stays alive until its pending submissions
+        // complete, then goes.
+        if !thread::panicking() {
             let context = &self.context;
             context.command_buffer_drop(self.id);
         }

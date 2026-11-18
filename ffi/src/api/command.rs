@@ -529,7 +529,6 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         Arc::into_raw(Arc::new(WGPUCommandBufferImpl {
             context: context.clone(),
             id: command_buffer_id,
-            open: atomic::AtomicBool::new(false),
         }))
         },
     )

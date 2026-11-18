@@ -35,7 +35,7 @@ pub fn contain_entry<T>(name: &str, fallback: T, f: impl FnOnce() -> T) -> T {
 #[cfg(debug_assertions)]
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDebugTriggerPanic() -> u32 {
-    match catch_unwind_contained("wgpuDebugTriggerPanic", || panic!("sonde orchestree par l'oracle")) {
+    match catch_unwind_contained("wgpuDebugTriggerPanic", || panic!("probe orchestrated by the oracle")) {
         Some(_) => 0, // no panic: the probe is broken
         None => 1,    // panic properly contained
     }

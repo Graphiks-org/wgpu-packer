@@ -81,7 +81,6 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
             .iter()
             .map(|command_buffer| {
                 let command_buffer = command_buffer.as_ref().expect("invalid command buffer");
-                command_buffer.open.store(true, atomic::Ordering::SeqCst);
                 command_buffer.id
             })
             .collect::<SmallVec<[_; 4]>>();
@@ -253,7 +252,6 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
             .iter()
             .map(|command_buffer| {
                 let command_buffer = command_buffer.as_ref().expect("invalid command buffer");
-                command_buffer.open.store(true, atomic::Ordering::SeqCst);
                 command_buffer.id
             })
             .collect::<SmallVec<[_; 4]>>();

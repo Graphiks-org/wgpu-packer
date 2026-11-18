@@ -335,7 +335,15 @@ pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> O
         match string_view.length {
             crate::conv::WGPU_STRLEN => None,
             0 => Some(""),
-            _ => panic!("Null address to WGPUStringView!"),
+            _ => {
+                // Pass3 finding 24: report and treat as absent instead of
+                // panicking (the containment would catch it anyway).
+                log::error!(
+                    "WGPUStringView with NULL data and length {}",
+                    string_view.length
+                );
+                None
+            }
         }
     } else {
         let bytes = match string_view.length {
