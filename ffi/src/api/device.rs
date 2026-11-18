@@ -480,7 +480,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
                 }
             }),
             sample_count: descriptor.sampleCount,
-            multiview: None,
+            // WGPURenderBundleEncoderDescriptorExtras: 0 = none.
+            multiview: crate::utils::chain_entry::<native::WGPURenderBundleEncoderDescriptorExtras>(
+                descriptor.nextInChain,
+                native::WGPUSType_RenderBundleEncoderDescriptorExtras,
+            )
+            .and_then(|extras| std::num::NonZeroU32::new(extras.multiview)),
         };
 
         // device=None: device-dependent validation is deferred to finish()
@@ -670,8 +675,15 @@ unsafe fn map_render_pipeline_descriptor(
                         .collect(),
                 ),
             }),
-        // No C knob for a multiview mask yet: every pipeline renders all views.
-        multiview_mask: None,
+        // WGPURenderPipelineDescriptorExtras: 0 = all views (the old
+        // behaviour), a nonzero mask selects the multiview layers.
+        multiview_mask: std::num::NonZeroU32::new(
+            crate::utils::chain_entry::<native::WGPURenderPipelineDescriptorExtras>(
+                descriptor.nextInChain,
+                native::WGPUSType_RenderPipelineDescriptorExtras,
+            )
+            .map_or(0, |extras| extras.multiviewMask),
+        ),
         // No C knob for a pipeline cache yet: every device starts without one.
         cache: None,
     }
@@ -977,10 +989,21 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         std::ptr::null(),
         || {
 
+        // The standard path honours a chained WGPUShaderRuntimeChecksDescriptor
+        // (pass1 finding 1): without it, wgpu-types' safe defaults apply.
+        let runtime_checks = descriptor
+            .and_then(|descriptor| {
+                crate::utils::chain_entry::<native::WGPUShaderRuntimeChecksDescriptor>(
+                    descriptor.nextInChain,
+                    native::WGPUSType_ShaderRuntimeChecksDescriptor,
+                )
+            })
+            .map(|checks| conv::map_shader_runtime_checks(checks.checks))
+            .unwrap_or_default();
         create_shader_module_impl(
             device,
             descriptor,
-            wgt::ShaderRuntimeChecks::default(),
+            runtime_checks,
             "wgpuDeviceCreateShaderModule",
         )
         },

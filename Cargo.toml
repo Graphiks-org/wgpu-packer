@@ -5,6 +5,10 @@ members = ["ffi"]
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 version = "=30.0.1"
+# API tracing (WGPUDeviceExtras.tracePath): gates wgt::Trace::Directory.
+# Costs ~2.6 MB of trace serialization in the static library; the path is a
+# debugging aid, documented as such in the GUIDE.
+features = ["trace"]
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"

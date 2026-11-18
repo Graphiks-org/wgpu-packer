@@ -195,7 +195,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             depth_stencil_attachment: depth_stencil_attachment,
             timestamp_writes: timestamp_writes,
             occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
-            multiview_mask: None,
+            // WGPURenderPassDescriptorExtras: 0 = all views.
+            multiview_mask: std::num::NonZeroU32::new(
+                crate::utils::chain_entry::<native::WGPURenderPassDescriptorExtras>(
+                    descriptor.nextInChain,
+                    native::WGPUSType_RenderPassDescriptorExtras,
+                )
+                .map_or(0, |extras| extras.multiviewMask),
+            ),
         };
 
         // maxDrawCount (C contract): WGPURenderPassMaxDrawCount chain. wgpu-core

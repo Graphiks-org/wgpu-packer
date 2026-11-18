@@ -342,6 +342,9 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     if (flags & native::WGPUInstanceFlag_AutomaticTimestampNormalization) != 0 {
         result.insert(wgt::InstanceFlags::AUTOMATIC_TIMESTAMP_NORMALIZATION);
     }
+    if (flags & native::WGPUInstanceFlag_StrictWebGPUCompliance) != 0 {
+        result.insert(wgt::InstanceFlags::STRICT_WEBGPU_COMPLIANCE);
+    }
 
     // Convenience helpers
     if (flags & native::WGPUInstanceFlag_Default) != 0 {
@@ -413,6 +416,13 @@ pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
 ) -> wgt::InstanceDescriptor {
+    // The WithEnv flag applies to the WHOLE descriptor (backends, power
+    // preference, DX12 options...) through wgt's with_env, not just to the
+    // flags field.
+    let apply_env = extras
+        .map(|extras| (extras.flags & native::WGPUInstanceFlag_WithEnv) != 0)
+        .unwrap_or(false);
+
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
@@ -436,7 +446,7 @@ pub unsafe fn map_instance_descriptor(
 
         let display = map_native_display_handle(&extras.displayHandle);
 
-        wgt::InstanceDescriptor {
+        let descriptor = wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             backend_options: wgt::BackendOptions {
                 gl: wgt::GlBackendOptions {
@@ -458,6 +468,11 @@ pub unsafe fn map_instance_descriptor(
                 for_resource_creation,
             },
             display,
+        };
+        if apply_env {
+            descriptor.with_env()
+        } else {
+            descriptor
         }
     } else {
         wgt::InstanceDescriptor::new_without_display_handle()
@@ -513,8 +528,12 @@ unsafe fn map_native_display_handle(
 /// wgpu-types gates `Trace::Directory` behind its `trace` feature; without it
 /// the only variant is `Off`, so this returns `Off` and the path is ignored.
 fn trace_from_extras(extras: Option<&native::WGPUDeviceExtras>) -> wgt::Trace {
-    let _ = extras;
-    wgt::Trace::Off
+    // The `trace` cargo feature of wgpu-core is enabled for this build:
+    // a non-empty path records every API call for later replay.
+    match extras.and_then(|extras| unsafe { string_view_into_str(extras.tracePath) }) {
+        Some(path) if !path.is_empty() => wgt::Trace::Directory(path.into()),
+        _ => wgt::Trace::Off,
+    }
 }
 
 #[inline]
@@ -522,6 +541,7 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
+    experimental_extras: Option<&native::WGPUExperimentalFeaturesExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
@@ -558,7 +578,15 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             // exposes `Trace::Off`: the field is read and honoured when the
             // feature is enabled, and ignored otherwise.
             trace: trace_from_extras(extras),
-            experimental_features: wgt::ExperimentalFeatures::disabled(),
+            // UNSAFE-by-contract opt-in (wgpu-types' ExperimentalFeatures::
+            // enabled): the consumer acknowledges EXPERIMENTAL_* features
+            // may contain UB bugs. The chain struct documents it.
+            experimental_features: match experimental_extras {
+                Some(extras) if extras.enabled != 0 => unsafe {
+                    wgt::ExperimentalFeatures::enabled()
+                },
+                _ => wgt::ExperimentalFeatures::disabled(),
+            },
         },
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
@@ -1656,6 +1684,18 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     }
 }
 
+/// Standard present modes + the native Auto* extensions
+/// (@ref WGPUNativePresentMode shares WGPUPresentMode's numeric space).
+fn map_present_mode_native(value: native::WGPUPresentMode) -> Option<wgt::PresentMode> {
+    if value as u32 == native::WGPUNativePresentMode_AutoVsync as u32 {
+        return Some(wgt::PresentMode::AutoVsync);
+    }
+    if value as u32 == native::WGPUNativePresentMode_AutoNoVsync as u32 {
+        return Some(wgt::PresentMode::AutoNoVsync);
+    }
+    map_present_mode(value)
+}
+
 #[inline]
 pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPresentMode> {
     match mode {
@@ -1663,7 +1703,8 @@ pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPres
         wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
         wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
         wgt::PresentMode::FifoRelaxed => Some(native::WGPUPresentMode_FifoRelaxed),
-        wgt::PresentMode::AutoVsync | wgt::PresentMode::AutoNoVsync => None,
+        wgt::PresentMode::AutoVsync => Some(native::WGPUNativePresentMode_AutoVsync),
+        wgt::PresentMode::AutoNoVsync => Some(native::WGPUNativePresentMode_AutoNoVsync),
     }
 }
 
@@ -2094,6 +2135,29 @@ pub unsafe fn map_surface(
 /// `Extended` tone mapping select the matching wide-gamut space. A request
 /// this packer cannot express is rejected rather than silently downgraded.
 fn map_surface_color_space(chain: *const native::WGPUChainedStruct) -> wgt::SurfaceColorSpace {
+    // The native extras chain carries the FULL wgt set (PQ/HLG...) and
+    // takes precedence over the standard SRGB/DisplayP3 chain.
+    if let Some(extras) = unsafe {
+        crate::utils::chain_entry::<native::WGPUSurfaceColorManagementExtras>(
+            chain,
+            native::WGPUSType_SurfaceColorManagementExtras,
+        )
+    } {
+        return match extras.colorSpace {
+            native::WGPUNativeSurfaceColorSpace_Auto => wgt::SurfaceColorSpace::Auto,
+            native::WGPUNativeSurfaceColorSpace_Srgb => wgt::SurfaceColorSpace::Srgb,
+            native::WGPUNativeSurfaceColorSpace_ExtendedSrgbLinear => {
+                wgt::SurfaceColorSpace::ExtendedSrgbLinear
+            }
+            native::WGPUNativeSurfaceColorSpace_DisplayP3 => wgt::SurfaceColorSpace::DisplayP3,
+            native::WGPUNativeSurfaceColorSpace_Bt2100Pq => wgt::SurfaceColorSpace::Bt2100Pq,
+            native::WGPUNativeSurfaceColorSpace_Bt2100Hlg => wgt::SurfaceColorSpace::Bt2100Hlg,
+            native::WGPUNativeSurfaceColorSpace_ExtendedSrgb => {
+                wgt::SurfaceColorSpace::ExtendedSrgb
+            }
+            _ => wgt::SurfaceColorSpace::Auto,
+        };
+    }
     let mut link = chain;
     while let Some(current) = unsafe { link.as_ref() } {
         if current.sType == native::WGPUSType_SurfaceColorManagement {
@@ -2139,7 +2203,7 @@ pub fn map_surface_configuration(
         color_space: map_surface_color_space(config.nextInChain),
         width: config.width,
         height: config.height,
-        present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
+        present_mode: map_present_mode_native(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
@@ -2231,8 +2295,9 @@ pub fn map_shader_runtime_checks(
         mesh_shader_primitive_indices_clamp: (value
             & native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
             != 0,
-        // No C bit for this check (wgpu 30) — enabled by default.
-        int_div_checks: true,
+        // Native extension bit (@ref WGPUShaderRuntimeChecks_IntDivChecks):
+        // absent = false, the caller pre-validates their divisions.
+        int_div_checks: (value & native::WGPUShaderRuntimeChecks_IntDivChecks) != 0,
     }
 }
 
@@ -2257,6 +2322,88 @@ pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Phase 1 parity: native present modes round-trip.
+    #[test]
+    fn native_present_modes_round_trip() {
+        assert_eq!(
+            to_native_present_mode(wgt::PresentMode::AutoVsync).map(|v| v as u32),
+            Some(native::WGPUNativePresentMode_AutoVsync as u32)
+        );
+        assert_eq!(
+            map_present_mode_native(native::WGPUNativePresentMode_AutoNoVsync as u32 as native::WGPUPresentMode),
+            Some(wgt::PresentMode::AutoNoVsync)
+        );
+        // The standard modes still map through the macro path.
+        assert_eq!(
+            map_present_mode_native(native::WGPUPresentMode_Fifo),
+            Some(wgt::PresentMode::Fifo)
+        );
+    }
+
+    /// Phase 1 parity: the extras chain carries the full wgt color space set.
+    #[test]
+    fn surface_color_management_extras_full_set() {
+        let cases = [
+            (native::WGPUNativeSurfaceColorSpace_Auto, wgt::SurfaceColorSpace::Auto),
+            (native::WGPUNativeSurfaceColorSpace_Srgb, wgt::SurfaceColorSpace::Srgb),
+            (
+                native::WGPUNativeSurfaceColorSpace_ExtendedSrgbLinear,
+                wgt::SurfaceColorSpace::ExtendedSrgbLinear,
+            ),
+            (native::WGPUNativeSurfaceColorSpace_DisplayP3, wgt::SurfaceColorSpace::DisplayP3),
+            (native::WGPUNativeSurfaceColorSpace_Bt2100Pq, wgt::SurfaceColorSpace::Bt2100Pq),
+            (native::WGPUNativeSurfaceColorSpace_Bt2100Hlg, wgt::SurfaceColorSpace::Bt2100Hlg),
+            (
+                native::WGPUNativeSurfaceColorSpace_ExtendedSrgb,
+                wgt::SurfaceColorSpace::ExtendedSrgb,
+            ),
+        ];
+        for (c_space, expected) in cases {
+            let extras = native::WGPUSurfaceColorManagementExtras {
+                chain: native::WGPUChainedStruct {
+                    next: std::ptr::null_mut(),
+                    sType: native::WGPUSType_SurfaceColorManagementExtras,
+                },
+                colorSpace: c_space,
+                toneMappingMode: native::WGPUToneMappingMode_Standard,
+            };
+            assert_eq!(
+                map_surface_color_space(&extras.chain as *const _),
+                expected,
+                "color space {c_space:?}"
+            );
+        }
+        // No chain at all: wgpu 30's default.
+        assert_eq!(
+            map_surface_color_space(std::ptr::null()),
+            wgt::SurfaceColorSpace::Auto
+        );
+    }
+
+    /// Phase 1 parity: the int_div_checks bit maps (absent = false: the
+    /// caller pre-validates; the safe default stays on the standard path).
+    #[test]
+    fn runtime_checks_int_div_bit() {
+        let all = map_shader_runtime_checks(
+            native::WGPUShaderRuntimeChecks_BoundsChecks
+                | native::WGPUShaderRuntimeChecks_ForceLoopBounding
+                | native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking
+                | native::WGPUShaderRuntimeChecks_TaskShaderDispatchTracking
+                | native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp
+                | native::WGPUShaderRuntimeChecks_IntDivChecks,
+        );
+        assert!(all.int_div_checks);
+        let without = map_shader_runtime_checks(native::WGPUShaderRuntimeChecks_BoundsChecks);
+        assert!(!without.int_div_checks);
+    }
+
+    /// Phase 1 parity: STRICT_WEBGPU_COMPLIANCE maps to the wgt bit.
+    #[test]
+    fn instance_flags_strict_compliance() {
+        let flags = map_instance_flags(native::WGPUInstanceFlag_StrictWebGPUCompliance);
+        assert!(flags.contains(wgt::InstanceFlags::STRICT_WEBGPU_COMPLIANCE));
+    }
 
     /// Regression (independent review): the P010 constant and feature are
     /// advertised, but map_texture_format panicked on the very value that

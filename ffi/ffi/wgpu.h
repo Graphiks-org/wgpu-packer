@@ -35,6 +35,18 @@ typedef enum WGPUNativeSType
     WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
     WGPUSType_SamplerDescriptorExtras = 0x0003000B,
+    /** Identifies @ref WGPURenderPipelineDescriptorExtras. */
+    WGPUSType_RenderPipelineDescriptorExtras = 0x0003000C,
+    /** Identifies @ref WGPURenderPassDescriptorExtras. */
+    WGPUSType_RenderPassDescriptorExtras = 0x0003000D,
+    /** Identifies @ref WGPURenderBundleEncoderDescriptorExtras. */
+    WGPUSType_RenderBundleEncoderDescriptorExtras = 0x0003000E,
+    /** Identifies @ref WGPUExperimentalFeaturesExtras. */
+    WGPUSType_ExperimentalFeaturesExtras = 0x0003000F,
+    /** Identifies @ref WGPUShaderRuntimeChecksDescriptor. */
+    WGPUSType_ShaderRuntimeChecksDescriptor = 0x00030010,
+    /** Identifies @ref WGPUSurfaceColorManagementExtras. */
+    WGPUSType_SurfaceColorManagementExtras = 0x00030011,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -934,6 +946,12 @@ static const WGPUInstanceFlag WGPUInstanceFlag_AdvancedDebugging = 1 << 26;
  * from the process environment and applied on top of the explicitly set flags.
  */
 static const WGPUInstanceFlag WGPUInstanceFlag_WithEnv = 1 << 27;
+/**
+ * Reject adapters that are not strictly WebGPU-compliant (wgpu-types
+ * InstanceFlags::STRICT_WEBGPU_COMPLIANCE, bit 7). Relevant to
+ * compatibility-profile applications.
+ */
+static const WGPUInstanceFlag WGPUInstanceFlag_StrictWebGPUCompliance = 1 << 7;
 static const WGPUInstanceFlag WGPUInstanceFlag_Force32 = 0x7FFFFFFF;
 
 typedef enum WGPUDx12Compiler
@@ -1586,6 +1604,111 @@ extern "C" {
 #endif
 
 /** Debug only: panic contained by the FFI wrapper. 1 = contained, 0 = no panic. */
+// ---------------------------------------------------------------------------
+// Phase 1 parity additions (independent review): wgpu capabilities the
+// standard chains cannot express. All extensions live here, never in
+// webgpu.h.
+// ---------------------------------------------------------------------------
+
+/**
+ * Native extension of @ref WGPUShaderRuntimeChecks (standard bits stop at
+ * 16): enforce integer division checks in shaders. wgpu-types defaults
+ * this to true; the bit exists to turn it OFF for pre-validated shaders.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_IntDivChecks = 0x20;
+
+/**
+ * Native present modes (@ref WGPUPresentMode has no Auto* values): let the
+ * backend pick vsync, like the browser does. Values live in the packer's
+ * native range (0x30000+).
+ */
+typedef enum WGPUNativePresentMode {
+    WGPUNativePresentMode_AutoVsync = 0x00030009,
+    WGPUNativePresentMode_AutoNoVsync = 0x0003000A,
+    WGPUNativePresentMode_Force32 = 0x7FFFFFFF
+} WGPUNativePresentMode;
+
+/**
+ * The full @ref wgt::SurfaceColorSpace set: @ref WGPUPredefinedColorSpace
+ * (standard) covers only SRGB and DisplayP3. Chained through
+ * @ref WGPUSurfaceColorManagementExtras, which takes precedence over the
+ * standard color-management chain.
+ */
+typedef enum WGPUNativeSurfaceColorSpace {
+    WGPUNativeSurfaceColorSpace_Auto = 0x00000000,
+    WGPUNativeSurfaceColorSpace_Srgb = 0x00000001,
+    WGPUNativeSurfaceColorSpace_ExtendedSrgbLinear = 0x00000002,
+    WGPUNativeSurfaceColorSpace_DisplayP3 = 0x00000003,
+    WGPUNativeSurfaceColorSpace_Bt2100Pq = 0x00000004,
+    WGPUNativeSurfaceColorSpace_Bt2100Hlg = 0x00000005,
+    WGPUNativeSurfaceColorSpace_ExtendedSrgb = 0x00000006,
+    WGPUNativeSurfaceColorSpace_Force32 = 0x7FFFFFFF
+} WGPUNativeSurfaceColorSpace;
+
+/**
+ * Chained in @ref WGPUSurfaceConfiguration: the full color space set,
+ * overriding the standard @ref WGPUSurfaceColorManagement chain when
+ * present. PQ/HLG HDR presentation requires this chain.
+ */
+typedef struct WGPUSurfaceColorManagementExtras {
+    WGPUChainedStruct chain;
+    WGPUNativeSurfaceColorSpace colorSpace;
+    WGPUToneMappingMode toneMappingMode;
+} WGPUSurfaceColorManagementExtras;
+
+/**
+ * Chained in @ref WGPURenderPipelineDescriptor: the multiview mask
+ * (wgpu-core RenderPipelineDescriptor::multiview_mask). 0 = all views
+ * (the previous behaviour). Requires the MULTIVIEW / SELECTIVE_MULTIVIEW
+ * feature as applicable.
+ */
+typedef struct WGPURenderPipelineDescriptorExtras {
+    WGPUChainedStruct chain;
+    uint32_t multiviewMask;
+} WGPURenderPipelineDescriptorExtras;
+
+/**
+ * Chained in @ref WGPURenderPassDescriptor: the multiview mask
+ * (wgpu-core RenderPassDescriptor::multiview_mask). 0 = all views.
+ */
+typedef struct WGPURenderPassDescriptorExtras {
+    WGPUChainedStruct chain;
+    uint32_t multiviewMask;
+} WGPURenderPassDescriptorExtras;
+
+/**
+ * Chained in @ref WGPURenderBundleEncoderDescriptor: the view count
+ * (wgpu-core RenderBundleEncoderDescriptor::multiview). 0 = none.
+ */
+typedef struct WGPURenderBundleEncoderDescriptorExtras {
+    WGPUChainedStruct chain;
+    uint32_t multiview;
+} WGPURenderBundleEncoderDescriptorExtras;
+
+/**
+ * Chained in @ref WGPUDeviceDescriptor: the unsafe opt-in to wgpu's
+ * EXPERIMENTAL_* features (mesh shaders, ray tracing, cooperative
+ * matrix). By giving access to still work-in-progress APIs, the consumer
+ * acknowledges there may be UB-containing bugs in those APIs — the same
+ * contract as wgpu-types' ExperimentalFeatures::enabled().
+ */
+typedef struct WGPUExperimentalFeaturesExtras {
+    WGPUChainedStruct chain;
+    WGPUBool enabled;
+} WGPUExperimentalFeaturesExtras;
+
+/**
+ * Chained in @ref WGPUShaderModuleDescriptor (the standard creation
+ * path): the runtime checks the compiled shaders must respect. Without
+ * this chain the packer applies wgpu-types' safe defaults. The same
+ * control exists as an explicit parameter of
+ * wgpuDeviceCreateShaderModuleTrusted.
+ */
+typedef struct WGPUShaderRuntimeChecksDescriptor {
+    WGPUChainedStruct chain;
+    WGPUShaderRuntimeChecks checks;
+} WGPUShaderRuntimeChecksDescriptor;
+
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 
 #ifdef __cplusplus

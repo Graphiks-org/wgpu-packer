@@ -300,6 +300,17 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
 
         let instance_ref = instance.as_ref().expect("invalid instance");
         let context = &instance_ref.context;
+        if let Some(options) = options {
+            // wgt 30 has no feature_level on RequestAdapterOptions: Core and
+            // Compatibility are both served by the same adapter query. An
+            // out-of-range value is reported, not ignored silently.
+            let level = options.featureLevel as u32;
+            if level == native::WGPUFeatureLevel_Force32 as u32 {
+                log::warn!(
+                    "wgpuInstanceRequestAdapter: invalid featureLevel (Force32) ignored"
+                );
+            }
+        }
         // Strong reference kept by the adapter so wgpuAdapterGetInstance can hand
         // it back; released with the adapter.
         Arc::increment_strong_count(instance);

@@ -38,6 +38,25 @@ macro_rules! new_userdata {
 unsafe impl Send for Userdata {}
 unsafe impl Sync for Userdata {}
 
+/// Walks a descriptor's `nextInChain` and returns the first entry whose
+/// sType matches, typed as `T` (a chained-struct type whose first field is
+/// WGPUChainedStruct). A null chain yields None.
+///
+/// SAFETY: `T` must be the struct type that `s_type` announces, and `chain`
+/// must point at a valid linked list owned by the caller.
+pub(crate) unsafe fn chain_entry<'a, T>(
+    mut chain: *const native::WGPUChainedStruct,
+    s_type: native::WGPUSType,
+) -> Option<&'a T> {
+    while let Some(link) = unsafe { chain.as_ref() } {
+        if link.sType == s_type {
+            return Some(unsafe { &*(link as *const native::WGPUChainedStruct as *const T) });
+        }
+        chain = link.next;
+    }
+    None
+}
+
 // Safer wrapper around `slice::from_raw_parts` to handle
 // invalid `ptr` when `len` is zero.
 #[inline]

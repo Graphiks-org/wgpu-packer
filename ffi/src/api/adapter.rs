@@ -152,7 +152,8 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             Some(descriptor) => {
                 let (desc, error_callback) = follow_chain!(
                     map_device_descriptor((descriptor, base_limits),
-                    WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+                    WGPUSType_DeviceExtras => native::WGPUDeviceExtras,
+                    WGPUSType_ExperimentalFeaturesExtras => native::WGPUExperimentalFeaturesExtras)
                 );
                 // Mode 0 (INIT macro) normalizes to WaitAnyOnly + warning,
                 // like every other CallbackInfo.
