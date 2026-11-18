@@ -200,13 +200,6 @@ pub(crate) fn format_error(err: &(impl error::Error + 'static)) -> String {
     format!("Validation Error\n\nCaused by:\n{}", output)
 }
 
-pub(crate) fn handle_error_fatal(
-    cause: impl error::Error + Send + Sync + 'static,
-    operation: &'static str,
-) -> ! {
-    panic!("Error in {operation}: {f}", f = format_error(&cause));
-}
-
 pub(crate) fn handle_error(
     sink_mutex: &Mutex<ErrorSinkRaw>,
     source: impl error::Error + Send + Sync + 'static,

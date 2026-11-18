@@ -8,7 +8,6 @@ use std::{
 
 use crate::conv;
 use crate::follow_chain;
-use crate::error::*;
 use crate::native;
 use crate::objects::*;
 
@@ -33,7 +32,13 @@ pub unsafe extern "C" fn wgpuSurfaceConfigure(
     ));
 
     match context.surface_configure(surface.id, device.id, &surface_config) {
-        Some(cause) => handle_error_fatal(cause, "wgpuSurfaceConfigure"),
+        // webgpu.h: a configure validation error leaves the surface
+        // unconfigured — getCurrentTexture then reports Error through its
+        // out-status. Never a process abort.
+        Some(cause) => {
+            log::error!("wgpuSurfaceConfigure: {cause}");
+            *surface.data.lock() = None;
+        }
         None => {
             let mut surface_data_guard = surface.data.lock();
             *surface_data_guard = Some(SurfaceData {
@@ -157,10 +162,15 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     let surface_data_guard = surface.data.lock();
     let surface_data = match surface_data_guard.as_ref() {
         Some(surface_data) => surface_data,
-        None => handle_error_fatal(
-            wgc::present::SurfaceError::NotConfigured,
-            "wgpuSurfaceGetCurrentTexture",
-        ),
+        None => {
+            // webgpu.h: an unconfigured (or deconfigured) surface is a
+            // validation error reported through the out-status, not a
+            // process abort.
+            log::error!("wgpuSurfaceGetCurrentTexture: surface is not configured");
+            surface_texture.texture = std::ptr::null_mut();
+            surface_texture.status = native::WGPUSurfaceGetCurrentTextureStatus_Error;
+            return;
+        }
     };
 
     match context.surface_get_current_texture(surface.id, None) {
@@ -196,7 +206,11 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
                 None => std::ptr::null_mut(),
             };
         }
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCurrentTexture"),
+        Err(cause) => {
+            log::error!("wgpuSurfaceGetCurrentTexture: {cause}");
+            surface_texture.texture = std::ptr::null_mut();
+            surface_texture.status = native::WGPUSurfaceGetCurrentTextureStatus_Error;
+        }
     };
 }
 

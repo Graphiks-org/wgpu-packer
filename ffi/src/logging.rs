@@ -80,7 +80,10 @@ pub extern "C" fn wgpuSetLogCallback(
     logger.userdata = userdata;
     if !logger.initialized {
         logger.initialized = true;
-        log::set_logger(&Logger).unwrap();
+        // A host process may already have installed a `log` logger (a Rust
+        // host, another library): the packer's callback then never fires,
+        // but the call must not abort.
+        let _ = log::set_logger(&Logger);
         if log::max_level() == LevelFilter::Off {
             log::set_max_level(LevelFilter::Warn);
         }

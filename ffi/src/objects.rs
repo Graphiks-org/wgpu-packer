@@ -407,7 +407,9 @@ impl Drop for WGPUTextureImpl {
             if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
                 match self.context.surface_texture_discard(surface_id) {
                     Ok(_) => (),
-                    Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
+                    // Inside Drop: log is the only report — the release
+                    // itself must complete, never abort.
+                    Err(cause) => log::error!("wgpuTextureRelease: {cause}"),
                 }
             }
         }

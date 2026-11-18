@@ -168,21 +168,32 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
         CreateSurfaceParams::Raw((rdh, rwh)) => {
             match context.instance_create_surface(Some(rdh), rwh, None) {
                 Ok(surface_id) => surface_id,
-                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+                // webgpu.h: the return is nullable — a backend surface
+                // creation failure is NULL, never a process abort.
+                Err(cause) => {
+                    log::error!("wgpuInstanceCreateSurface: {cause}");
+                    return std::ptr::null_mut();
+                }
             }
         }
         #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
         CreateSurfaceParams::Metal(layer) => {
             match context.instance_create_surface_metal(layer, None) {
                 Ok(surface_id) => surface_id,
-                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+                Err(cause) => {
+                    log::error!("wgpuInstanceCreateSurface: {cause}");
+                    return std::ptr::null_mut();
+                }
             }
         }
         #[cfg(all(target_os = "windows", feature = "dx12"))]
         CreateSurfaceParams::SwapChainPanel(panel) => {
             match context.instance_create_surface_from_swap_chain_panel(panel, None) {
                 Ok(surface_id) => surface_id,
-                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+                Err(cause) => {
+                    log::error!("wgpuInstanceCreateSurface: {cause}");
+                    return std::ptr::null_mut();
+                }
             }
         }
     };
@@ -202,9 +213,10 @@ pub unsafe extern "C" fn wgpuInstanceProcessEvents(instance: native::WGPUInstanc
 
     match context.poll_all_devices(false) {
         Ok(_queue_empty) => (),
-        Err(cause) => {
-            handle_error_fatal(cause, "wgpuInstanceProcessEvents");
-        }
+        // A poll error is most often a device loss — a normal event that
+        // the lost device's own future reports through its sink. The
+        // process-events call itself is never fatal.
+        Err(cause) => log::error!("wgpuInstanceProcessEvents: {cause}"),
     }
 
     // Delivery of the AllowProcessEvents callbacks completed during the poll
@@ -404,7 +416,10 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
         }
         match context.poll_all_devices(false) {
             Ok(_queue_empty) => (),
-            Err(cause) => handle_error_fatal(cause, "wgpuInstanceWaitAny"),
+            Err(cause) => {
+                log::error!("wgpuInstanceWaitAny: {cause}");
+                return native::WGPUWaitStatus_Error;
+            }
         }
         future::sweep_process_events(context);
         return native::WGPUWaitStatus_Success;
@@ -476,7 +491,10 @@ pub unsafe extern "C" fn wgpuInstanceWaitAny(
             let (poll, notified) = future::run_in_wait_scope(|| context.poll_all_devices(false));
             match poll {
                 Ok(_queue_empty) => (),
-                Err(cause) => handle_error_fatal(cause, "wgpuInstanceWaitAny"),
+                Err(cause) => {
+                    log::error!("wgpuInstanceWaitAny: {cause}");
+                    return native::WGPUWaitStatus_Error;
+                }
             }
             completed.extend(notified.into_iter().filter(|id| ids.contains(id)));
             let mut more = future::take_ready_payloads(&ids);
