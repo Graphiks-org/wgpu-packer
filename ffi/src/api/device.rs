@@ -1998,3 +1998,79 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetInternalCounters(
+    device: native::WGPUDevice,
+    counters: *mut native::WGPUInternalCounters,
+) {
+    crate::ffi_utils::contain_entry("wgpuDeviceGetInternalCounters", (), || {
+        let device = device.as_ref().expect("invalid device");
+        let counters = counters.as_mut().expect("invalid return pointer");
+        let internal = device.context.device_get_internal_counters(device.id);
+        macro_rules! read {
+            ($field:ident) => {
+                internal.hal.$field.read() as i64
+            };
+        }
+        *counters = native::WGPUInternalCounters {
+            Buffers: read!(buffers),
+            Textures: read!(textures),
+            TextureViews: read!(texture_views),
+            BindGroups: read!(bind_groups),
+            BindGroupLayouts: read!(bind_group_layouts),
+            RenderPipelines: read!(render_pipelines),
+            ComputePipelines: read!(compute_pipelines),
+            RayTracingPipelines: read!(ray_tracing_pipelines),
+            PipelineLayouts: read!(pipeline_layouts),
+            Samplers: read!(samplers),
+            CommandEncoders: read!(command_encoders),
+            ShaderModules: read!(shader_modules),
+            QuerySets: read!(query_sets),
+            Fences: read!(fences),
+            BufferMemory: read!(buffer_memory),
+            TextureMemory: read!(texture_memory),
+            AccelerationStructureMemory: read!(acceleration_structure_memory),
+            MemoryAllocations: read!(memory_allocations),
+        };
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetAllocatorReport(
+    device: native::WGPUDevice,
+    report: *mut native::WGPUAllocatorReport,
+) -> native::WGPUStatus {
+    crate::ffi_utils::contain_entry(
+        "wgpuDeviceGetAllocatorReport",
+        native::WGPUStatus_Error,
+        || {
+        let device = device.as_ref().expect("invalid device");
+        let report = report.as_mut().expect("invalid return pointer");
+        match device.context.device_generate_allocator_report(device.id) {
+            Some(allocation) => {
+                *report = native::WGPUAllocatorReport {
+                    nextInChain: std::ptr::null(),
+                    totalAllocatedBytes: allocation.total_allocated_bytes,
+                    totalReservedBytes: allocation.total_reserved_bytes,
+                    allocationCount: allocation.allocations.len(),
+                    blockCount: allocation.blocks.len(),
+                };
+                native::WGPUStatus_Success
+            }
+            // Backends that allocate directly have no allocator report:
+            // totals at zero is the honest answer.
+            None => {
+                *report = native::WGPUAllocatorReport {
+                    nextInChain: std::ptr::null(),
+                    totalAllocatedBytes: 0,
+                    totalReservedBytes: 0,
+                    allocationCount: 0,
+                    blockCount: 0,
+                };
+                native::WGPUStatus_Success
+            }
+        }
+        },
+    )
+}

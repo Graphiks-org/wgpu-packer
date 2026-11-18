@@ -13,6 +13,9 @@ features = ["trace"]
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 version = "=30.0.1"
+# Internal counters (wgpuDeviceGetInternalCounters): without it every
+# counter reads 0.
+features = ["counters"]
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"

@@ -386,3 +386,49 @@ pub unsafe extern "C" fn wgpuAdapterRelease(adapter: native::WGPUAdapter) {
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetDownlevelCapabilities(
+    adapter: native::WGPUAdapter,
+    capabilities: *mut native::WGPUDownlevelCapabilities,
+) {
+    crate::ffi_utils::contain_entry(
+        "wgpuAdapterGetDownlevelCapabilities",
+        (),
+        || {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        let capabilities = capabilities.as_mut().expect("invalid return pointer");
+        let caps = adapter
+            .context
+            .adapter_downlevel_capabilities(adapter.id);
+        *capabilities = native::WGPUDownlevelCapabilities {
+            nextInChain: std::ptr::null(),
+            flags: caps.flags.bits() as native::WGPUNativeDownlevelFlags,
+            shaderModel: match caps.shader_model {
+                wgt::ShaderModel::Sm2 => native::WGPUNativeShaderModel_Sm2,
+                wgt::ShaderModel::Sm4 => native::WGPUNativeShaderModel_Sm4,
+                wgt::ShaderModel::Sm5 => native::WGPUNativeShaderModel_Sm5,
+            },
+        };
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetPresentationTimestamp(
+    adapter: native::WGPUAdapter,
+) -> u64 {
+    crate::ffi_utils::contain_entry(
+        "wgpuAdapterGetPresentationTimestamp",
+        0,
+        || {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        // wgt's PresentationTimestamp is a u128 nanosecond value whose 0
+        // is the invalid sentinel.
+        adapter
+            .context
+            .adapter_get_presentation_timestamp(adapter.id)
+            .0 as u64
+        },
+    )
+}

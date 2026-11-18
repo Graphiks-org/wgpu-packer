@@ -337,8 +337,20 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     },
                     force_fallback_adapter: options.forceFallbackAdapter != 0,
                     compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
-                    // No C knob for limit-bucketing (wgpu 30) — disabled.
-                    apply_limit_buckets: false,
+                    // WGPURequestAdapterOptionsExtras: map the reported
+                    // limits to a bucket (fingerprinting mitigation).
+                    apply_limit_buckets: options
+                        .nextInChain
+                        .as_ref()
+                        .and_then(|chain| unsafe {
+                            crate::utils::chain_entry::<
+                                native::WGPURequestAdapterOptionsExtras,
+                            >(
+                                chain,
+                                native::WGPUSType_RequestAdapterOptionsExtras,
+                            )
+                        })
+                        .is_some_and(|extras| extras.applyLimitBuckets != 0),
                 },
                 match options.backendType {
                     native::WGPUBackendType_Undefined => wgt::Backends::all(),

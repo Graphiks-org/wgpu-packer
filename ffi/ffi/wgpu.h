@@ -53,6 +53,8 @@ typedef enum WGPUNativeSType
     WGPUSType_ComputePipelineDescriptorExtras = 0x00030013,
     /** Identifies the @ref WGPUFormatCapabilities OUT-chain. */
     WGPUSType_FormatCapabilities = 0x00030014,
+    /** Identifies @ref WGPURequestAdapterOptionsExtras. */
+    WGPUSType_RequestAdapterOptionsExtras = 0x00030015,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -2204,6 +2206,108 @@ WGPU_EXPORT void wgpuCommandEncoderMarkAccelerationStructuresBuilt(WGPUCommandEn
 WGPU_EXPORT uint64_t wgpuBlasPrepareCompactAsync(WGPUBlas blas, WGPU_NULLABLE void (*callback)(WGPUBool ok, WGPU_NULLABLE void * userdata1, WGPU_NULLABLE void * userdata2), WGPU_NULLABLE void * userdata1, WGPU_NULLABLE void * userdata2) WGPU_FUNCTION_ATTRIBUTE;
 
 WGPU_EXPORT WGPUBool wgpuBlasReadyForCompaction(WGPUBlas blas) WGPU_FUNCTION_ATTRIBUTE;
+
+/** The NOOP backend bit: request a deterministic headless adapter. */
+static const WGPUInstanceBackend WGPUInstanceBackend_Noop = 0x0003000E;
+
+/**
+ * wgpu-types' DownlevelFlags, bit for bit (26 bits): what the adapter
+ * lacks compared to full WebGPU.
+ */
+typedef enum WGPUNativeDownlevelFlags {
+    WGPUNativeDownlevelFlags_Computeshaders = 1 << 0,
+    WGPUNativeDownlevelFlags_Fragmentwritablestorage = 1 << 1,
+    WGPUNativeDownlevelFlags_Indirectexecution = 1 << 2,
+    WGPUNativeDownlevelFlags_Basevertex = 1 << 3,
+    WGPUNativeDownlevelFlags_Readonlydepthstencil = 1 << 4,
+    WGPUNativeDownlevelFlags_Nonpoweroftwomipmappedtextures = 1 << 5,
+    WGPUNativeDownlevelFlags_Cubearraytextures = 1 << 6,
+    WGPUNativeDownlevelFlags_Comparisonsamplers = 1 << 7,
+    WGPUNativeDownlevelFlags_Independentblend = 1 << 8,
+    WGPUNativeDownlevelFlags_Vertexstorage = 1 << 9,
+    WGPUNativeDownlevelFlags_Anisotropicfiltering = 1 << 10,
+    WGPUNativeDownlevelFlags_Fragmentstorage = 1 << 11,
+    WGPUNativeDownlevelFlags_Multisampledshading = 1 << 12,
+    WGPUNativeDownlevelFlags_Depthtextureandbuffercopies = 1 << 13,
+    WGPUNativeDownlevelFlags_Webgputextureformatsupport = 1 << 14,
+    WGPUNativeDownlevelFlags_Bufferbindingsnot16Bytealigned = 1 << 15,
+    WGPUNativeDownlevelFlags_Unrestrictedindexbuffer = 1 << 16,
+    WGPUNativeDownlevelFlags_Fulldrawindexuint32 = 1 << 17,
+    WGPUNativeDownlevelFlags_Depthbiasclamp = 1 << 18,
+    WGPUNativeDownlevelFlags_Viewformats = 1 << 19,
+    WGPUNativeDownlevelFlags_Unrestrictedexternaltexturecopies = 1 << 20,
+    WGPUNativeDownlevelFlags_Surfaceviewformats = 1 << 21,
+    WGPUNativeDownlevelFlags_Nonblockingqueryresolve = 1 << 22,
+    WGPUNativeDownlevelFlags_Shaderf16Inf32 = 1 << 23,
+    WGPUNativeDownlevelFlags_Msl21 = 1 << 24,
+    WGPUNativeDownlevelFlags_Texturecompression = 1 << 25,
+    WGPUNativeDownlevelFlags_Force32 = 0x7FFFFFFF
+} WGPUNativeDownlevelFlags;
+
+/** Shader model families, in D3D terms. */
+typedef enum WGPUNativeShaderModel {
+    WGPUNativeShaderModel_WebGPU = 0x00000000,
+    WGPUNativeShaderModel_Sm2 = 0x00000001,
+    WGPUNativeShaderModel_Sm4 = 0x00000002,
+    WGPUNativeShaderModel_Sm5 = 0x00000003,
+    WGPUNativeShaderModel_Force32 = 0x7FFFFFFF
+} WGPUNativeShaderModel;
+
+typedef struct WGPUDownlevelCapabilities {
+    WGPUChainedStruct const * nextInChain;
+    WGPUNativeDownlevelFlags flags;
+    WGPUNativeShaderModel shaderModel;
+} WGPUDownlevelCapabilities;
+
+WGPU_EXPORT void wgpuAdapterGetDownlevelCapabilities(WGPUAdapter adapter, WGPUDownlevelCapabilities * capabilities) WGPU_FUNCTION_ATTRIBUTE;
+
+/** Nanoseconds, 0 = invalid/unsupported. */
+WGPU_EXPORT uint64_t wgpuAdapterGetPresentationTimestamp(WGPUAdapter adapter) WGPU_FUNCTION_ATTRIBUTE;
+
+/** Live resource counters (requires nothing; enabled at build time). */
+typedef struct WGPUInternalCounters {
+    int64_t Buffers;
+    int64_t Textures;
+    int64_t TextureViews;
+    int64_t BindGroups;
+    int64_t BindGroupLayouts;
+    int64_t RenderPipelines;
+    int64_t ComputePipelines;
+    int64_t RayTracingPipelines;
+    int64_t PipelineLayouts;
+    int64_t Samplers;
+    int64_t CommandEncoders;
+    int64_t ShaderModules;
+    int64_t QuerySets;
+    int64_t Fences;
+    int64_t BufferMemory;
+    int64_t TextureMemory;
+    int64_t AccelerationStructureMemory;
+    int64_t MemoryAllocations;
+} WGPUInternalCounters;
+
+WGPU_EXPORT void wgpuDeviceGetInternalCounters(WGPUDevice device, WGPUInternalCounters * counters) WGPU_FUNCTION_ATTRIBUTE;
+
+/** Allocator totals; per-allocation details are a documented follow-up. */
+typedef struct WGPUAllocatorReport {
+    WGPUChainedStruct const * nextInChain;
+    uint64_t totalAllocatedBytes;
+    uint64_t totalReservedBytes;
+    size_t allocationCount;
+    size_t blockCount;
+} WGPUAllocatorReport;
+
+/** WGPUStatus_Success with zeroed totals when the backend allocates directly. */
+WGPU_EXPORT WGPUStatus wgpuDeviceGetAllocatorReport(WGPUDevice device, WGPUAllocatorReport * report) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURequestAdapterOptions: map the reported limits to a
+ * pre-defined bucket, mitigating fingerprinting of untrusted content.
+ */
+typedef struct WGPURequestAdapterOptionsExtras {
+    WGPUChainedStruct chain;
+    WGPUBool applyLimitBuckets;
+} WGPURequestAdapterOptionsExtras;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

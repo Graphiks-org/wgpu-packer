@@ -310,6 +310,9 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
     if (flags & native::WGPUInstanceBackend_Metal) != 0 {
         result |= wgt::Backends::METAL;
     }
+    if (flags & native::WGPUInstanceBackend_Noop) != 0 {
+        result.insert(wgt::Backends::NOOP);
+    }
     if (flags & native::WGPUInstanceBackend_DX12) != 0 {
         result |= wgt::Backends::DX12;
     }

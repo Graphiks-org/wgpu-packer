@@ -180,6 +180,21 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
   `wgpuRenderPassEncoder*MeshTasks*` draws. The 13 mesh-shader limits
   are WGPUNativeLimits fields. Requires the experimental opt-in +
   MeshShader.
+- Diagnostics: `wgpuAdapterGetDownlevelCapabilities` (26
+  WGPUNativeDownlevelFlags bits bit-for-bit + shader model),
+  `wgpuAdapterGetPresentationTimestamp` (ns, 0 = invalid),
+  `wgpuDeviceGetInternalCounters` (18 live resource/memory counters —
+  the wgpu-types `counters` feature is enabled in this build) and
+  `wgpuDeviceGetAllocatorReport` (totals + allocation/block counts;
+  per-allocation detail is a documented follow-up).
+- `WGPUInstanceBackend_Noop`: the deterministic headless backend.
+- `WGPURequestAdapterOptionsExtras.applyLimitBuckets`: fingerprinting
+  mitigation through wgt's limit bucketing.
+- Metal interop covers device, queue and texture (the raw accessors
+  wgpu-hal 30 exposes publicly). Buffer, texture-view and surface raw
+  handles are upstream-blocked: wgpu-hal's metal Buffer/TextureView/
+  Surface have no public accessor (as_raw is private) — they will be
+  exposed the day upstream adds them.
 - Ray tracing (acceleration structures): `wgpuDeviceCreateBlas` /
   `wgpuDeviceCreateTlas` (flags, update mode, TLAS max instances),
   `wgpuCommandEncoderBuildAccelerationStructures` (triangle/AABB
