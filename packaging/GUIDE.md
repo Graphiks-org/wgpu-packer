@@ -117,6 +117,79 @@ Android: `-llog -landroid` · Windows MSVC: `user32 gdi32 dxgi d3d12 dxguid` · 
   future (`wgpuDeviceGetLostFuture`, stable id per device) follows this
   callback's mode.
 
+## Parity extensions (chains, flags and entry points)
+
+Everything wgpu-core/wgpu-types 30.0.1 can express, exposed as native
+extensions — never in webgpu.h. Added by the parity work (phases 1-2).
+
+All of them chain through `nextInChain` and live only in `wgpu.h`:
+
+- `WGPURenderPipelineDescriptorExtras` / `WGPURenderPassDescriptorExtras`
+  (`multiviewMask`, 0 = all views) and
+  `WGPURenderBundleEncoderDescriptorExtras` (`multiview`): multiview /
+  selective-multiview rendering.
+- `WGPUSurfaceColorManagementExtras` (`WGPUNativeSurfaceColorSpace`): the
+  FULL color space set — including PQ (`Bt2100Pq`) and HLG (`Bt2100Hlg`)
+  HDR presentation — taking precedence over the standard
+  `WGPUSurfaceColorManagement` chain, which only covers SRGB/DisplayP3.
+- `WGPUShaderRuntimeChecksDescriptor` chained on the standard
+  shader-module creation path, plus the
+  `WGPUShaderRuntimeChecks_IntDivChecks` native bit (0x20): runtime
+  checks without the `Trusted` entry point.
+- `WGPUExperimentalFeaturesExtras`: the UNSAFE opt-in to wgpu's
+  `EXPERIMENTAL_*` features (mesh shaders, ray tracing, cooperative
+  matrix). Enabling it acknowledges those APIs may contain
+  UB-producing bugs — the same contract as wgpu-types'
+  `ExperimentalFeatures::enabled()`.
+- `WGPUInstanceFlag_StrictWebGPUCompliance` (1 << 7), and
+  `WGPUInstanceFlag_WithEnv` now applies to the WHOLE instance
+  descriptor (backends, power preference, DX12 options) through
+  wgpu-types' `with_env`.
+- `WGPUNativePresentMode_AutoVsync` / `_AutoNoVsync`: browser-style
+  automatic present modes, accepted in `WGPUSurfaceConfiguration`.
+- `wgpuDeviceCreateShaderModulePassthrough`: precompiled sources passed
+  through to the backend (SPIR-V words, DXIL, HLSL, MetalLib, MSL, GLSL,
+  WGSL) with named entry points and workgroup sizes. Bindings only work
+  for SPIR-V; at least one source must be set. Requires
+  `PassthroughShaders`.
+- `wgpuAdapterGetCooperativeMatrixProperties` (two-call): the supported
+  MxNxK cooperative-matrix configurations.
+- `wgpuSurfaceGetDisplayHdrInfo(adapter, surface)`: HDR metadata
+  (nits/EDR headroom/primaries/coarse range/bits). Absent platform
+  values are NAN (or -1 / 0 for the integer buckets).
+- `wgpuAdapterGetFormatCapabilities` fills a `WGPUFormatCapabilities`
+  OUT-chain (allowed usages + `WGPUNativeFormatFeatureFlags`) when the
+  caller chains it in `WGPUDawnFormatCapabilities.nextInChain`.
+- `WGPUDeviceExtras.tracePath` is now live (api trace capture): it costs
+  ~2.6 MB of trace serialization in the static library.
+
+Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
+
+- `WGPUTextureComponentSwizzleDescriptor` (standard chain) stays
+  unread: wgpu-types has no component-swizzle field on texture views.
+- `WGPURequestAdapterOptions::featureLevel` is read and checked
+  (`Force32` logs a warning) but wgpu-types has no feature-level field:
+  Core and Compatibility are served by the same adapter query.
+- `WGPUQueueDescriptor.defaultQueue.label` is ignored: wgpu-core offers
+  no hook to label the implicit queue at device creation.
+- Compilation info positions non-parsing (type-check / validation)
+  shader errors at line 0: naga reports those without source spans.
+
+- `wgpuDeviceCreateMeshPipeline` (WGPUMeshPipelineDescriptor: task +
+  mesh + fragment stages, multiview, cache) and the four
+  `wgpuRenderPassEncoder*MeshTasks*` draws. The 13 mesh-shader limits
+  are WGPUNativeLimits fields. Requires the experimental opt-in +
+  MeshShader.
+- Ray tracing (acceleration structures): `wgpuDeviceCreateBlas` /
+  `wgpuDeviceCreateTlas` (flags, update mode, TLAS max instances),
+  `wgpuCommandEncoderBuildAccelerationStructures` (triangle/AABB
+  geometries, TLAS packages with per-instance transforms),
+  `wgpuCommandEncoderMarkAccelerationStructuresBuilt`,
+  `wgpuBlasPrepareCompactAsync` (C callback + userdata) and
+  `wgpuBlasReadyForCompaction`. Ray QUERY happens in shaders (RayQuery);
+  wgpu 30 has no dispatch_rays. The 7 RT limits are WGPUNativeLimits
+  fields.
+
 ## 6. Unimplemented functions (call = contained error)
 
 These symbols are exported but raise `unimplemented!()` when called in
