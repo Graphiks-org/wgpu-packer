@@ -60,6 +60,7 @@ fn main() {
         ("WGPUDevice", "WGPUDeviceImpl"),
         ("WGPUInstance", "WGPUInstanceImpl"),
         ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
+        ("WGPUPipelineCache", "WGPUPipelineCacheImpl"),
         ("WGPUQuerySet", "WGPUQuerySetImpl"),
         ("WGPUQueue", "WGPUQueueImpl"),
         ("WGPURenderBundle", "WGPURenderBundleImpl"),

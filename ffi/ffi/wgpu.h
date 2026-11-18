@@ -47,6 +47,10 @@ typedef enum WGPUNativeSType
     WGPUSType_ShaderRuntimeChecksDescriptor = 0x00030010,
     /** Identifies @ref WGPUSurfaceColorManagementExtras. */
     WGPUSType_SurfaceColorManagementExtras = 0x00030011,
+    /** Identifies @ref WGPUProgrammableStageDescriptorExtras. */
+    WGPUSType_ProgrammableStageDescriptorExtras = 0x00030012,
+    /** Identifies @ref WGPUComputePipelineDescriptorExtras. */
+    WGPUSType_ComputePipelineDescriptorExtras = 0x00030013,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1650,6 +1654,84 @@ typedef enum WGPUNativeSurfaceColorSpace {
  * overriding the standard @ref WGPUSurfaceColorManagement chain when
  * present. PQ/HLG HDR presentation requires this chain.
  */
+/**
+ * Native texture aspects (@ref WGPUTextureAspect has no plane values):
+ * selecting a plane of a multi-planar (NV12/P010) texture.
+ */
+typedef enum WGPUNativeTextureAspect {
+    WGPUNativeTextureAspect_Plane0 = 0x0003000B,
+    WGPUNativeTextureAspect_Plane1 = 0x0003000C,
+    WGPUNativeTextureAspect_Plane2 = 0x0003000D,
+    WGPUNativeTextureAspect_Force32 = 0x7FFFFFFF
+} WGPUNativeTextureAspect;
+
+/**
+ * Internal buffer uses, wgpu-types' BufferUses bit for bit (u16). Only
+ * meaningful to wgpuCommandEncoderTransitionResources.
+ */
+typedef enum WGPUBufferUses {
+    WGPUBufferUses_MapRead = 1 << 0,
+    WGPUBufferUses_MapWrite = 1 << 1,
+    WGPUBufferUses_CopySrc = 1 << 2,
+    WGPUBufferUses_CopyDst = 1 << 3,
+    WGPUBufferUses_Index = 1 << 4,
+    WGPUBufferUses_Vertex = 1 << 5,
+    WGPUBufferUses_Uniform = 1 << 6,
+    WGPUBufferUses_StorageReadOnly = 1 << 7,
+    WGPUBufferUses_StorageReadWrite = 1 << 8,
+    WGPUBufferUses_Indirect = 1 << 9,
+    WGPUBufferUses_QueryResolve = 1 << 10,
+    WGPUBufferUses_AccelerationStructureScratch = 1 << 11,
+    WGPUBufferUses_BottomLevelAccelerationStructureInput = 1 << 12,
+    WGPUBufferUses_TopLevelAccelerationStructureInput = 1 << 13,
+    WGPUBufferUses_AccelerationStructureQuery = 1 << 14,
+    WGPUBufferUses_Force32 = 0x7FFFFFFF
+} WGPUBufferUses;
+
+/**
+ * Internal texture uses, wgpu-types' TextureUses bit for bit. Only
+ * meaningful to wgpuCommandEncoderTransitionResources.
+ */
+typedef enum WGPUNativeTextureUses {
+    WGPUNativeTextureUses_Uninitialized = 1 << 0,
+    WGPUNativeTextureUses_Present = 1 << 1,
+    WGPUNativeTextureUses_CopySrc = 1 << 2,
+    WGPUNativeTextureUses_CopyDst = 1 << 3,
+    WGPUNativeTextureUses_Resource = 1 << 4,
+    WGPUNativeTextureUses_ColorTarget = 1 << 5,
+    WGPUNativeTextureUses_DepthStencilRead = 1 << 6,
+    WGPUNativeTextureUses_DepthStencilWrite = 1 << 7,
+    WGPUNativeTextureUses_StorageReadOnly = 1 << 8,
+    WGPUNativeTextureUses_StorageWriteOnly = 1 << 9,
+    WGPUNativeTextureUses_StorageReadWrite = 1 << 10,
+    WGPUNativeTextureUses_StorageAtomic = 1 << 11,
+    WGPUNativeTextureUses_Force32 = 0x7FFFFFFF
+} WGPUNativeTextureUses;
+
+/** A buffer state transition for wgpuCommandEncoderTransitionResources. */
+typedef struct WGPUBufferTransition {
+    WGPUBuffer buffer;
+    WGPUBufferUses state;
+} WGPUBufferTransition;
+
+/** A texture state transition for wgpuCommandEncoderTransitionResources. */
+typedef struct WGPUNativeTextureTransition {
+    WGPUTexture texture;
+    /** NULL = the whole texture. */
+    WGPUImageSubresourceRange const * selector;
+    WGPUNativeTextureUses state;
+} WGPUNativeTextureTransition;
+
+/**
+ * Chained in @ref WGPUProgrammableStageDescriptor: whether workgroup
+ * memory in WGSL is zero-initialized (WebGPU-conformant default is false
+ * in wgpu; true costs a memset).
+ */
+typedef struct WGPUProgrammableStageDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUBool zeroInitializeWorkgroupMemory;
+} WGPUProgrammableStageDescriptorExtras;
+
 typedef struct WGPUSurfaceColorManagementExtras {
     WGPUChainedStruct chain;
     WGPUNativeSurfaceColorSpace colorSpace;
@@ -1662,10 +1744,35 @@ typedef struct WGPUSurfaceColorManagementExtras {
  * (the previous behaviour). Requires the MULTIVIEW / SELECTIVE_MULTIVIEW
  * feature as applicable.
  */
+/** Opaque pipeline cache handle (wgpu-core pipeline::PipelineCache). */
+typedef struct WGPUPipelineCacheImpl *WGPUPipelineCache;
+
 typedef struct WGPURenderPipelineDescriptorExtras {
     WGPUChainedStruct chain;
     uint32_t multiviewMask;
+    /** Optional pipeline cache (wgpuDeviceCreatePipelineCache). */
+    WGPUPipelineCache cache;
 } WGPURenderPipelineDescriptorExtras;
+
+/**
+ * Chained in @ref WGPUComputePipelineDescriptor: the optional pipeline
+ * cache, same field as the render pipeline extras.
+ */
+typedef struct WGPUComputePipelineDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUPipelineCache cache;
+} WGPUComputePipelineDescriptorExtras;
+
+/** Creation descriptor: optional seed data from a previous GetData call. */
+typedef struct WGPUPipelineCacheDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    /** Previously saved cache data (wgpuPipelineCacheGetData). */
+    uint8_t const * data;
+    size_t dataSize;
+    /** Fail loudly instead of ignoring unusable seed data. */
+    WGPUBool fallback;
+} WGPUPipelineCacheDescriptor;
 
 /**
  * Chained in @ref WGPURenderPassDescriptor: the multiview mask
@@ -1708,6 +1815,30 @@ typedef struct WGPUShaderRuntimeChecksDescriptor {
     WGPUChainedStruct chain;
     WGPUShaderRuntimeChecks checks;
 } WGPUShaderRuntimeChecksDescriptor;
+
+/**
+ * Creates a pipeline cache. Validation problems go to the device error
+ * sink; the returned handle must be released with
+ * wgpuPipelineCacheRelease. Requires the PipelineCache feature to be
+ * effective; backends without support create an inert cache.
+ */
+WGPU_EXPORT WGPU_NULLABLE WGPUPipelineCache wgpuDeviceCreatePipelineCache(WGPUDevice device, WGPU_NULLABLE WGPUPipelineCacheDescriptor const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * Two-call pattern: with a NULL buffer, returns the data size; otherwise
+ * copies at most bufferSize bytes and returns the copied size. Returns 0
+ * when the cache holds no data yet.
+ */
+WGPU_EXPORT size_t wgpuPipelineCacheGetData(WGPU_NULLABLE WGPUPipelineCache pipelineCache, void * buffer, size_t bufferSize) WGPU_FUNCTION_ATTRIBUTE;
+
+WGPU_EXPORT void wgpuPipelineCacheAddRef(WGPUPipelineCache pipelineCache) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuPipelineCacheRelease(WGPUPipelineCache pipelineCache) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * Aliasing/explicit barrier transitions (tile-memory workflows). States
+ * are internal wgpu uses, not @ref WGPUBufferUsage flags.
+ */
+WGPU_EXPORT void wgpuCommandEncoderTransitionResources(WGPUCommandEncoder commandEncoder, WGPUBufferTransition const * bufferTransitions, size_t bufferTransitionCount, WGPUNativeTextureTransition const * textureTransitions, size_t textureTransitionCount) WGPU_FUNCTION_ATTRIBUTE;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

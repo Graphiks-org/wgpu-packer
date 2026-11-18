@@ -33,7 +33,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
                 format: conv::map_texture_format(descriptor.format),
                 dimension: conv::map_texture_view_dimension(descriptor.dimension),
                 range: wgt::ImageSubresourceRange {
-                    aspect: conv::map_texture_aspect(descriptor.aspect)
+                    aspect: conv::map_texture_aspect_native(descriptor.aspect)
                         .unwrap_or(wgt::TextureAspect::All),
                     base_mip_level: descriptor.baseMipLevel,
                     mip_level_count: match descriptor.mipLevelCount {

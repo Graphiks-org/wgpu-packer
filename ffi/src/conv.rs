@@ -885,7 +885,7 @@ pub unsafe fn map_image_copy_texture(
             .id,
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
-        aspect: map_texture_aspect(native.aspect).unwrap_or(wgt::TextureAspect::All),
+        aspect: map_texture_aspect_native(native.aspect).unwrap_or(wgt::TextureAspect::All),
     }
 }
 
@@ -1684,9 +1684,25 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     }
 }
 
+/// Standard aspects + the native plane extensions (NV12/P010 planes).
+pub(crate) fn map_texture_aspect_native(
+    value: native::WGPUTextureAspect,
+) -> Option<wgt::TextureAspect> {
+    if value as u32 == native::WGPUNativeTextureAspect_Plane0 as u32 {
+        return Some(wgt::TextureAspect::Plane0);
+    }
+    if value as u32 == native::WGPUNativeTextureAspect_Plane1 as u32 {
+        return Some(wgt::TextureAspect::Plane1);
+    }
+    if value as u32 == native::WGPUNativeTextureAspect_Plane2 as u32 {
+        return Some(wgt::TextureAspect::Plane2);
+    }
+    map_texture_aspect(value)
+}
+
 /// Standard present modes + the native Auto* extensions
 /// (@ref WGPUNativePresentMode shares WGPUPresentMode's numeric space).
-fn map_present_mode_native(value: native::WGPUPresentMode) -> Option<wgt::PresentMode> {
+pub(crate) fn map_present_mode_native(value: native::WGPUPresentMode) -> Option<wgt::PresentMode> {
     if value as u32 == native::WGPUNativePresentMode_AutoVsync as u32 {
         return Some(wgt::PresentMode::AutoVsync);
     }

@@ -215,6 +215,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
 /// C -> wgc mapping of the compute pipeline descriptor, shared by the
 /// synchronous and async variants (the C chains are only valid during
 /// the call: the mapping stays on the calling thread).
+/// Reads the WGPUProgrammableStageDescriptorExtras chain (also honoured on
+/// VertexState / FragmentState chains - same sType) and returns its
+/// zero-init flag. Absent chain = false (the WGSL-spec default).
+fn zero_init_from_chain(chain: *const native::WGPUChainedStruct) -> bool {
+    unsafe {
+        crate::utils::chain_entry::<native::WGPUProgrammableStageDescriptorExtras>(
+            chain,
+            native::WGPUSType_ProgrammableStageDescriptorExtras,
+        )
+    }
+    .is_some_and(|extras| extras.zeroInitializeWorkgroupMemory != 0)
+}
 unsafe fn map_compute_pipeline_descriptor(
     descriptor: &native::WGPUComputePipelineDescriptor,
 ) -> wgc::pipeline::ComputePipelineDescriptor {
@@ -243,10 +255,15 @@ unsafe fn map_compute_pipeline_descriptor(
             })
             .collect(),
             // No C knob for this yet: the WGSL spec default is false.
-            zero_initialize_workgroup_memory: false,
+            zero_initialize_workgroup_memory: zero_init_from_chain(descriptor.compute.nextInChain),
         },
         // No C knob for a pipeline cache yet: every device starts without one.
-        cache: None,
+        cache: crate::utils::chain_entry::<native::WGPUComputePipelineDescriptorExtras>(
+            descriptor.nextInChain,
+            native::WGPUSType_ComputePipelineDescriptorExtras,
+        )
+        .and_then(|extras| unsafe { extras.cache.as_ref() })
+        .map(|cache| cache.id),
     }
 }
 
@@ -542,7 +559,7 @@ unsafe fn map_render_pipeline_descriptor(
                     })
                     .collect(),
                 // No C knob for this yet: the WGSL spec default is false.
-                zero_initialize_workgroup_memory: false,
+                zero_initialize_workgroup_memory: zero_init_from_chain(descriptor.vertex.nextInChain),
             },
             buffers: Cow::Owned(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
@@ -653,7 +670,7 @@ unsafe fn map_render_pipeline_descriptor(
                         })
                         .collect(),
                     // No C knob for this yet: the WGSL spec default is false.
-                    zero_initialize_workgroup_memory: false,
+                    zero_initialize_workgroup_memory: zero_init_from_chain(fragment.nextInChain),
                 },
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount)
@@ -685,7 +702,12 @@ unsafe fn map_render_pipeline_descriptor(
             .map_or(0, |extras| extras.multiviewMask),
         ),
         // No C knob for a pipeline cache yet: every device starts without one.
-        cache: None,
+        cache: crate::utils::chain_entry::<native::WGPURenderPipelineDescriptorExtras>(
+            descriptor.nextInChain,
+            native::WGPUSType_RenderPipelineDescriptorExtras,
+        )
+        .and_then(|extras| unsafe { extras.cache.as_ref() })
+        .map(|cache| cache.id),
     }
 }
 
@@ -877,6 +899,97 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
         }))
         },
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreatePipelineCache(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUPipelineCacheDescriptor>,
+) -> native::WGPUPipelineCache {
+    crate::ffi_utils::contain_entry(
+        "wgpuDeviceCreatePipelineCache",
+        std::ptr::null(),
+        || {
+
+        let device = device.as_ref().expect("invalid device");
+        let label = descriptor
+            .map(|descriptor| string_view_into_label(descriptor.label))
+            .unwrap_or_default();
+        let data: Option<Cow<[u8]>> = descriptor.and_then(|descriptor| {
+            (descriptor.dataSize > 0).then(|| {
+                Cow::Borrowed(std::slice::from_raw_parts(
+                    descriptor.data,
+                    descriptor.dataSize,
+                ))
+            })
+        });
+        let desc = wgc::pipeline::PipelineCacheDescriptor {
+            label,
+            data,
+            fallback: descriptor.map(|d| d.fallback != 0).unwrap_or(false),
+        };
+        match device.context.device_create_pipeline_cache(device.id, &desc, None) {
+            (id, None) => Arc::into_raw(Arc::new(crate::objects::WGPUPipelineCacheImpl {
+                context: device.context.clone(),
+                id,
+            })),
+            (_, Some(cause)) => {
+                handle_error(
+                    &device.error_sink,
+                    cause,
+                    desc.label,
+                    "wgpuDeviceCreatePipelineCache",
+                );
+                std::ptr::null()
+            }
+        }
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheGetData(
+    pipeline_cache: native::WGPUPipelineCache,
+    buffer: *mut core::ffi::c_void,
+    buffer_size: usize,
+) -> usize {
+    crate::ffi_utils::contain_entry(
+        "wgpuPipelineCacheGetData",
+        0,
+        || {
+
+        let cache = pipeline_cache.as_ref().expect("invalid pipeline cache");
+        // Two-call protocol: a NULL buffer returns the needed size.
+        let Some(data) = cache.context.pipeline_cache_get_data(cache.id) else {
+            return 0;
+        };
+        let copied = data.len().min(buffer_size);
+        if !buffer.is_null() && copied > 0 {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), buffer as *mut u8, copied);
+        }
+        if buffer.is_null() {
+            data.len()
+        } else {
+            copied
+        }
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheAddRef(pipeline_cache: native::WGPUPipelineCache) {
+    crate::ffi_utils::contain_entry("wgpuPipelineCacheAddRef", (), || {
+        assert!(!pipeline_cache.is_null(), "invalid pipeline cache");
+        Arc::increment_strong_count(pipeline_cache);
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheRelease(pipeline_cache: native::WGPUPipelineCache) {
+    crate::ffi_utils::contain_entry("wgpuPipelineCacheRelease", (), || {
+        assert!(!pipeline_cache.is_null(), "invalid pipeline cache");
+        Arc::decrement_strong_count(pipeline_cache);
+    })
 }
 
 unsafe fn create_shader_module_impl(

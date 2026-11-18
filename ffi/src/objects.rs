@@ -389,6 +389,11 @@ pub(crate) struct TextureData {
     pub(crate) texture_binding_view_dimension: native::WGPUTextureViewDimension,
 }
 
+pub struct WGPUPipelineCacheImpl {
+    pub(crate) context: Arc<Context>,
+    pub(crate) id: id::PipelineCacheId,
+}
+
 pub struct WGPUTextureImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::TextureId,

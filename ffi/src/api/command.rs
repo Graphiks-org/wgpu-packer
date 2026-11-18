@@ -311,7 +311,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearTexture(
 
         let subresource_range = match range {
             Some(range) => wgt::ImageSubresourceRange {
-                aspect: conv::map_texture_aspect(range.aspect).unwrap_or(wgt::TextureAspect::All),
+                aspect: conv::map_texture_aspect_native(range.aspect).unwrap_or(wgt::TextureAspect::All),
                 base_mip_level: range.baseMipLevel,
                 mip_level_count: match range.mipLevelCount {
                     0 => panic!("invalid mipLevelCount"),
@@ -715,4 +715,72 @@ pub unsafe extern "C" fn wgpuCommandEncoderRelease(command_encoder: native::WGPU
         Arc::decrement_strong_count(command_encoder);
         },
     )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderTransitionResources(
+    command_encoder: native::WGPUCommandEncoder,
+    buffer_transitions: *const native::WGPUBufferTransition,
+    buffer_transition_count: usize,
+    texture_transitions: *const native::WGPUNativeTextureTransition,
+    texture_transition_count: usize,
+) {
+    crate::ffi_utils::contain_entry("wgpuCommandEncoderTransitionResources", (), || {
+        let (command_encoder_id, context, error_sink) = {
+            let encoder = command_encoder.as_ref().expect("invalid command encoder");
+            (encoder.id, &encoder.context, &encoder.error_sink.clone())
+        };
+
+        let buffers: Vec<wgt::BufferTransition<wgc::id::BufferId>> =
+            make_slice(buffer_transitions, buffer_transition_count)
+                .iter()
+                .map(|transition| wgt::BufferTransition {
+                    buffer: transition.buffer.as_ref().expect("invalid buffer").id,
+                    state: wgt::BufferUses::from_bits_retain(transition.state as u16),
+                })
+                .collect();
+
+        let textures: Vec<wgt::TextureTransition<wgc::id::TextureId>> =
+            make_slice(texture_transitions, texture_transition_count)
+                .iter()
+                .map(|transition| {
+                    let texture = transition.texture.as_ref().expect("invalid texture");
+                    let selector = transition.selector.as_ref().map(|range| {
+                        // A count of 0 means "to the end" for both axes.
+                        let mips_end = if range.mipLevelCount == 0 {
+                            u32::MAX
+                        } else {
+                            range.baseMipLevel.saturating_add(range.mipLevelCount)
+                        };
+                        let layers_end = if range.arrayLayerCount == 0 {
+                            u32::MAX
+                        } else {
+                            range.baseArrayLayer.saturating_add(range.arrayLayerCount)
+                        };
+                        wgt::TextureSelector {
+                            mips: range.baseMipLevel..mips_end,
+                            layers: range.baseArrayLayer..layers_end,
+                        }
+                    });
+                    wgt::TextureTransition {
+                        texture: texture.id,
+                        selector,
+                        state: wgt::TextureUses::from_bits_retain(transition.state as u16),
+                    }
+                })
+                .collect();
+
+        if let Err(cause) = context.command_encoder_transition_resources(
+            command_encoder_id,
+            buffers.into_iter(),
+            textures.into_iter(),
+        ) {
+            handle_error(
+                error_sink,
+                cause,
+                None,
+                "wgpuCommandEncoderTransitionResources",
+            );
+        }
+    })
 }
