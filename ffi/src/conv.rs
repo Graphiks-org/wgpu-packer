@@ -2527,7 +2527,7 @@ mod tests {
         let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
         entry.binding = 0;
         entry.texture.sampleType = native::WGPUTextureSampleType_Float;
-        match map_bind_group_layout_entry(&entry, None).ty {
+        match map_bind_group_layout_entry(&entry, None, None).ty {
             wgt::BindingType::Texture { view_dimension, .. } => {
                 assert_eq!(view_dimension, wgt::TextureViewDimension::D2);
             }
@@ -2538,7 +2538,7 @@ mod tests {
         entry.binding = 0;
         entry.storageTexture.access = native::WGPUStorageTextureAccess_WriteOnly;
         entry.storageTexture.format = native::WGPUTextureFormat_RGBA8Unorm;
-        match map_bind_group_layout_entry(&entry, None).ty {
+        match map_bind_group_layout_entry(&entry, None, None).ty {
             wgt::BindingType::StorageTexture { view_dimension, .. } => {
                 assert_eq!(view_dimension, wgt::TextureViewDimension::D2);
             }
@@ -2555,7 +2555,7 @@ mod tests {
         entry.buffer.type_ = native::WGPUBufferBindingType_Uniform;
         entry.bindingArraySize = 4;
         assert_eq!(
-            map_bind_group_layout_entry(&entry, None).count,
+            map_bind_group_layout_entry(&entry, None, None).count,
             std::num::NonZeroU32::new(4)
         );
     }
