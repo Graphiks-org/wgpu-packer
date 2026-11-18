@@ -1278,7 +1278,15 @@ typedef struct WGPUNativeLimits
     uint32_t maxMeshOutputPrimitives;
     uint32_t maxMeshOutputLayers;
     uint32_t maxMeshMultiviewViewCount;
-} WGPUNativeLimits;
+    /** Ray-tracing limits (wgpu-types; default 0 — request explicitly). */
+    uint32_t maxBlasPrimitiveCount;
+    uint32_t maxBlasGeometryCount;
+    uint32_t maxTlasInstanceCount;
+    uint32_t maxAccelerationStructuresPerShaderStage;
+    uint32_t maxBuffersAndAccelerationStructuresPerShaderStage;
+    uint32_t maxRayDispatchCount;
+    uint32_t maxRayRecursionDepth;
+} WGPUNativeLimits WGPU_STRUCTURE_ATTRIBUTE;
 
 #define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
     /*.chain=*/_wgpu_MAKE_INIT_STRUCT(WGPUChainedStruct, { \
@@ -1302,6 +1310,13 @@ typedef struct WGPUNativeLimits
     /*.maxMeshOutputPrimitives=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxMeshOutputLayers=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxMeshMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBlasPrimitiveCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBlasGeometryCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTlasInstanceCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxAccelerationStructuresPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBuffersAndAccelerationStructuresPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxRayDispatchCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxRayRecursionDepth=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
 
 /**
@@ -2039,6 +2054,156 @@ WGPU_EXPORT void wgpuRenderPassEncoderDrawMeshTasks(WGPURenderPassEncoder encode
 WGPU_EXPORT void wgpuRenderPassEncoderDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset) WGPU_FUNCTION_ATTRIBUTE;
 WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
 WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+
+
+// ---------------------------------------------------------------------------
+// Ray tracing (phase 2 lot 3b): acceleration structures. wgpu 30 exposes
+// creation, building, marking and compaction — ray QUERY happens in
+// shaders (the RayQuery feature), there is no dispatch_rays pipeline.
+// Requires the experimental opt-in + RayTracing features.
+// ---------------------------------------------------------------------------
+
+/** Opaque bottom-level acceleration structure handle. */
+typedef struct WGPUBlasImpl *WGPUBlas;
+/** Opaque top-level acceleration structure handle. */
+typedef struct WGPUTlasImpl *WGPUTlas;
+
+/** wgpu-types' AccelerationStructureFlags, bit for bit. */
+typedef enum WGPUNativeAsFlags {
+    WGPUNativeAsFlags_AllowUpdate = 1 << 0,
+    WGPUNativeAsFlags_AllowCompaction = 1 << 1,
+    WGPUNativeAsFlags_PreferFastTrace = 1 << 2,
+    WGPUNativeAsFlags_PreferFastBuild = 1 << 3,
+    WGPUNativeAsFlags_LowMemory = 1 << 4,
+    WGPUNativeAsFlags_Force32 = 0x7FFFFFFF
+} WGPUNativeAsFlags;
+
+/** wgpu-types' AccelerationStructureGeometryFlags, bit for bit. */
+typedef enum WGPUNativeAsGeometryFlags {
+    WGPUNativeAsGeometryFlags_Opaque = 1 << 0,
+    WGPUNativeAsGeometryFlags_NoDuplicateAnyHitInvocation = 1 << 1,
+    WGPUNativeAsGeometryFlags_Force32 = 0x7FFFFFFF
+} WGPUNativeAsGeometryFlags;
+
+/** Build or (when the flags allow it) prefer an incremental update. */
+typedef enum WGPUNativeAsUpdateMode {
+    WGPUNativeAsUpdateMode_Build = 0x00000000,
+    WGPUNativeAsUpdateMode_PreferUpdate = 0x00000001,
+    WGPUNativeAsUpdateMode_Force32 = 0x7FFFFFFF
+} WGPUNativeAsUpdateMode;
+
+typedef struct WGPUBlasDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    WGPUNativeAsFlags flags;
+    WGPUNativeAsUpdateMode updateMode;
+} WGPUBlasDescriptor;
+
+typedef struct WGPUTlasDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    WGPUNativeAsFlags flags;
+    WGPUNativeAsUpdateMode updateMode;
+    uint32_t maxInstances;
+} WGPUTlasDescriptor;
+
+/** Size of one triangle geometry of a BLAS (creation time). */
+typedef struct WGPUBlasTriangleGeometrySize {
+    WGPUVertexFormat vertexFormat;
+    uint32_t vertexCount;
+    /** WGPUIndexFormat_Undefined = not indexed. */
+    WGPUIndexFormat indexFormat;
+    /** 0xFFFFFFFF = not indexed. */
+    uint32_t indexCount;
+    WGPUNativeAsGeometryFlags flags;
+} WGPUBlasTriangleGeometrySize;
+
+/** Size of one AABB geometry of a BLAS (creation time). */
+typedef struct WGPUBlasAabbGeometrySize {
+    uint32_t primitiveCount;
+    WGPUNativeAsGeometryFlags flags;
+} WGPUBlasAabbGeometrySize;
+
+/** All geometry sizes of a BLAS: one kind at a time. */
+typedef struct WGPUBlasGeometrySizeDescriptors {
+    WGPUChainedStruct const * nextInChain;
+    /** 0 = triangles, 1 = AABBs. */
+    uint32_t type;
+    WGPUBlasTriangleGeometrySize const * triangleGeometries;
+    size_t triangleGeometryCount;
+    WGPUBlasAabbGeometrySize const * aabbGeometries;
+    size_t aabbGeometryCount;
+} WGPUBlasGeometrySizeDescriptors;
+
+/** One triangle geometry to build into a BLAS. */
+typedef struct WGPUBlasTriangleBuildGeometry {
+    WGPUBlasTriangleGeometrySize size;
+    WGPUBuffer vertexBuffer;
+    /** NULL = no index buffer. */
+    WGPU_NULLABLE WGPUBuffer indexBuffer;
+    /** NULL = identity transform. */
+    WGPU_NULLABLE WGPUBuffer transformBuffer;
+    uint32_t firstVertex;
+    uint64_t vertexStride;
+    /** 0xFFFFFFFF = none. */
+    uint32_t firstIndex;
+    /** UINT64_MAX = none. */
+    uint64_t transformBufferOffset;
+} WGPUBlasTriangleBuildGeometry;
+
+/** One AABB geometry to build into a BLAS. */
+typedef struct WGPUBlasAabbBuildGeometry {
+    WGPUBlasAabbGeometrySize size;
+    uint64_t stride;
+    WGPUBuffer aabbBuffer;
+    uint32_t primitiveOffset;
+} WGPUBlasAabbBuildGeometry;
+
+/** One BLAS build entry: geometries of one kind. */
+typedef struct WGPUBlasBuildEntry {
+    WGPUBlas blas;
+    /** 0 = triangles, 1 = AABBs. */
+    uint32_t type;
+    WGPUBlasTriangleBuildGeometry const * triangleGeometries;
+    size_t triangleGeometryCount;
+    WGPUBlasAabbBuildGeometry const * aabbGeometries;
+    size_t aabbGeometryCount;
+} WGPUBlasBuildEntry;
+
+/** One TLAS instance. A NULL blas means "leave untouched". */
+typedef struct WGPUTlasInstance {
+    WGPU_NULLABLE WGPUBlas blas;
+    float transform[12];
+    uint32_t customData;
+    uint8_t mask;
+} WGPUTlasInstance;
+
+/** One TLAS build package. */
+typedef struct WGPUTlasPackage {
+    WGPUTlas tlas;
+    WGPUTlasInstance const * instances;
+    size_t instanceCount;
+    uint32_t lowestUnmodified;
+} WGPUTlasPackage;
+
+WGPU_EXPORT WGPU_NULLABLE WGPUBlas wgpuDeviceCreateBlas(WGPUDevice device, WGPUBlasDescriptor const * descriptor, WGPUBlasGeometrySizeDescriptors const * sizes) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT WGPU_NULLABLE WGPUTlas wgpuDeviceCreateTlas(WGPUDevice device, WGPUTlasDescriptor const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
+
+WGPU_EXPORT void wgpuBlasAddRef(WGPUBlas blas) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuBlasRelease(WGPUBlas blas) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuTlasAddRef(WGPUTlas tlas) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuTlasRelease(WGPUTlas tlas) WGPU_FUNCTION_ATTRIBUTE;
+
+WGPU_EXPORT void wgpuCommandEncoderBuildAccelerationStructures(WGPUCommandEncoder commandEncoder, WGPUBlasBuildEntry const * blasEntries, size_t blasEntryCount, WGPUTlasPackage const * tlasPackages, size_t tlasPackageCount) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuCommandEncoderMarkAccelerationStructuresBuilt(WGPUCommandEncoder commandEncoder, WGPUBlas const * blas, size_t blasCount, WGPUTlas const * tlas, size_t tlasCount) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * Asks the driver for the compacted size. The submission index is
+ * returned (0 on error); the callback fires when the size is known.
+ */
+WGPU_EXPORT uint64_t wgpuBlasPrepareCompactAsync(WGPUBlas blas, WGPU_NULLABLE void (*callback)(WGPUBool ok, WGPU_NULLABLE void * userdata1, WGPU_NULLABLE void * userdata2), WGPU_NULLABLE void * userdata1, WGPU_NULLABLE void * userdata2) WGPU_FUNCTION_ATTRIBUTE;
+
+WGPU_EXPORT WGPUBool wgpuBlasReadyForCompaction(WGPUBlas blas) WGPU_FUNCTION_ATTRIBUTE;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

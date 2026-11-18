@@ -389,6 +389,32 @@ pub(crate) struct TextureData {
     pub(crate) texture_binding_view_dimension: native::WGPUTextureViewDimension,
 }
 
+pub struct WGPUBlasImpl {
+    pub(crate) context: Arc<Context>,
+    pub(crate) id: id::BlasId,
+}
+
+impl Drop for WGPUBlasImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.blas_drop(self.id);
+        }
+    }
+}
+
+pub struct WGPUTlasImpl {
+    pub(crate) context: Arc<Context>,
+    pub(crate) id: id::TlasId,
+}
+
+impl Drop for WGPUTlasImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.tlas_drop(self.id);
+        }
+    }
+}
+
 pub struct WGPUPipelineCacheImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::PipelineCacheId,

@@ -16,6 +16,7 @@ mod compute;
 mod queue;
 mod surface;
 mod labels;
+mod ray_tracing;
 
 pub use instance::*;
 pub use adapter::*;
@@ -33,6 +34,7 @@ pub use compute::*;
 pub use queue::*;
 pub use surface::*;
 pub use labels::*;
+pub use ray_tracing::*;
 
 use std::mem;
 use crate::{conv, native};
