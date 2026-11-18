@@ -35,6 +35,11 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y mesa-utils libgl1-mesa-dri libegl1
       - run: cargo test -p wgpu-packer-ffi
       - run: cargo test --release -p wgpu-packer-ffi
+      # Structural suites (independent review D5): they run locally but were
+      # never enforced in CI — the unimplemented-stub list in particular.
+      # Linux job: the shell scripts expect a POSIX toolchain.
+      - run: python3 tests/test_version.py && python3 tests/test_unimplemented.py && python3 tests/test_ci.py && python3 tests/test_manifest.py && python3 tests/test_android_targets.py
+      - run: bash scripts/test_pipeline.sh && bash scripts/test_packaging.sh
 
   oracle_windows:
     runs-on: windows-2022
@@ -45,10 +50,6 @@ jobs:
           toolchain: 1.93.0
       - run: cargo test -p wgpu-packer-ffi
       - run: cargo test --release -p wgpu-packer-ffi
-      # Structural suites (independent review D5): they run locally but were
-      # never enforced in CI — the unimplemented-stub list in particular.
-      - run: python3 tests/test_version.py && python3 tests/test_unimplemented.py && python3 tests/test_ci.py && python3 tests/test_manifest.py && python3 tests/test_android_targets.py
-      - run: bash scripts/test_pipeline.sh && bash scripts/test_packaging.sh
 
   cinterop_smoke:
     # D7 (independent review): the contract as the real consumer sees it —
