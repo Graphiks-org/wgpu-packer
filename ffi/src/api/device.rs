@@ -54,7 +54,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
             .iter()
             .map(|entry| {
                 follow_chain!(map_bind_group_entry((entry),
-                    WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras)
+                    WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras,
+                    WGPUSType_ExternalTextureBindingEntry => native::WGPUExternalTextureBindingEntry)
                 )
             })
             .collect::<Vec<_>>();
@@ -97,7 +98,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             .iter()
             .map(|entry| {
                 follow_chain!(map_bind_group_layout_entry((entry),
-                    WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras)
+                    WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras,
+                    WGPUSType_ExternalTextureBindingLayout => native::WGPUExternalTextureBindingLayout)
                 )
             })
             .collect::<Vec<_>>();

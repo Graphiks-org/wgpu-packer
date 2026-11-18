@@ -5,10 +5,6 @@
 //! - `wgpuInstanceGetWGSLLanguageFeatures` / `wgpuInstanceHasWGSLLanguageFeature`
 //!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgt/naga 29 API
 //!   listing the supported WGSL language features.
-//! - `wgpuExternalTextureAddRef` / `wgpuExternalTextureRelease`: type
-//!   that cannot be ref-counted through the ABI — webgpu.h: "Creation of WGPUExternalTexture is
-//!   extremely implementation-dependent and not defined in this header"
-//!   (deferred video path, spec §5).
 
 use crate::native;
 
@@ -58,26 +54,4 @@ pub extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     )
 }
 
-#[no_mangle]
-pub extern "C" fn wgpuExternalTextureAddRef(_external_texture: native::WGPUExternalTexture) {
-    crate::ffi_utils::contain_entry(
-        "wgpuExternalTextureAddRef",
-        (),
-        || {
 
-        unimplemented!();
-        },
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuExternalTextureRelease(_external_texture: native::WGPUExternalTexture) {
-    crate::ffi_utils::contain_entry(
-        "wgpuExternalTextureRelease",
-        (),
-        || {
-
-        unimplemented!();
-        },
-    )
-}

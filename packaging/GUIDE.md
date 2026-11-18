@@ -180,6 +180,15 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
   `wgpuRenderPassEncoder*MeshTasks*` draws. The 13 mesh-shader limits
   are WGPUNativeLimits fields. Requires the experimental opt-in +
   MeshShader.
+- Native video path (the former ExternalTexture stubs are gone):
+  `wgpuDeviceCreateExternalTexture` (RGBA / NV12 /
+  Yu12 planes as texture views, YUV + gamut conversion matrices,
+  parametric transfer functions, sample/load transforms),
+  `wgpuExternalTextureDestroy`, real AddRef/Release, and the standard
+  WGPUExternalTextureBindingEntry / BindingLayout chains wired in bind
+  groups. Requires the ExternalTextures feature. The web-only
+  copy_external_image_to_texture has no native equivalent (its sources
+  are web_sys types — documented limitation).
 - Diagnostics: `wgpuAdapterGetDownlevelCapabilities` (26
   WGPUNativeDownlevelFlags bits bit-for-bit + shader model),
   `wgpuAdapterGetPresentationTimestamp` (ns, 0 = invalid),
@@ -210,12 +219,11 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
 These symbols are exported but raise `unimplemented!()` when called in
 v30.0.1.0 — do not call them from Kotlin. The panic is contained at the
 ABI boundary (§5): the call logs an error and returns the type's error
-value (`NULL`, `WGPUStatus_Error`, 0), never an abort. 5 stubs; the
+value (`NULL`, `WGPUStatus_Error`, 0), never an abort. 3 stubs; the
 reasons are detailed in `ffi/src/unimplemented.rs`:
 
 wgpuInstanceGetWGSLLanguageFeatures, wgpuInstanceHasWGSLLanguageFeature,
-wgpuSupportedWGSLLanguageFeaturesFreeMembers,
-wgpuExternalTextureAddRef, wgpuExternalTextureRelease.
+wgpuSupportedWGSLLanguageFeaturesFreeMembers.
 
 Note:
 

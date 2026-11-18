@@ -60,6 +60,7 @@ fn main() {
         ("WGPUDevice", "WGPUDeviceImpl"),
         ("WGPUInstance", "WGPUInstanceImpl"),
         ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
+        ("WGPUExternalTexture", "WGPUExternalTextureImpl"),
         ("WGPUBlas", "WGPUBlasImpl"),
         ("WGPUTlas", "WGPUTlasImpl"),
         ("WGPUPipelineCache", "WGPUPipelineCacheImpl"),

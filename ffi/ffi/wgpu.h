@@ -2309,6 +2309,57 @@ typedef struct WGPURequestAdapterOptionsExtras {
     WGPUBool applyLimitBuckets;
 } WGPURequestAdapterOptionsExtras;
 
+/** Plane composition of an external texture. */
+typedef enum WGPUNativeExternalTextureFormat {
+    /** Single Rgba8Unorm/Bgra8Unorm plane. */
+    WGPUNativeExternalTextureFormat_Rgba = 0x00000000,
+    /** R8Unorm Y plane + Rg8Unorm interleaved CbCr plane. */
+    WGPUNativeExternalTextureFormat_Nv12 = 0x00000001,
+    /** Separate R8Unorm Y, Cb and Cr planes. */
+    WGPUNativeExternalTextureFormat_Yu12 = 0x00000002,
+    WGPUNativeExternalTextureFormat_Force32 = 0x7FFFFFFF
+} WGPUNativeExternalTextureFormat;
+
+/**
+ * Parametric gamma transfer function tf: {k*linear | linear < b},
+ * {a*pow(linear, 1/g) - (a-1) | linear >= b}. All 1.0 = identity.
+ */
+typedef struct WGPUExternalTextureTransferFunction {
+    float a;
+    float b;
+    float g;
+    float k;
+} WGPUExternalTextureTransferFunction;
+
+/**
+ * Native video path: an external texture bundles 1 (RGBA), 2 (NV12) or
+ * 3 (Yu12) plane TEXTURE VIEWS with the YUV/gamut conversion matrices the
+ * shader must apply. Bind it through the standard
+ * WGPUExternalTextureBindingEntry / BindingLayout chains. Requires the
+ * ExternalTextures feature. (The web-only copy_external_image_to_texture
+ * has no native equivalent: its sources are web_sys types.)
+ */
+typedef struct WGPUExternalTextureDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    uint32_t width;
+    uint32_t height;
+    WGPUNativeExternalTextureFormat format;
+    /** Column-major 4x4, YCbCr -> RGBA. Ignored for Rgba. */
+    float yuvConversionMatrix[16];
+    /** Column-major 3x3 linear-RGB source -> destination gamut. */
+    float gamutConversionMatrix[9];
+    WGPUExternalTextureTransferFunction srcTransferFunction;
+    WGPUExternalTextureTransferFunction dstTransferFunction;
+    /** Column-major 3x2 affine transform for ImageSample coordinates. */
+    float sampleTransform[6];
+    /** Column-major 3x2 affine transform for ImageLoad coordinates. */
+    float loadTransform[6];
+} WGPUExternalTextureDescriptor;
+
+WGPU_EXPORT WGPU_NULLABLE WGPUExternalTexture wgpuDeviceCreateExternalTexture(WGPUDevice device, WGPUExternalTextureDescriptor const * descriptor, WGPUTextureView const * planes, size_t planeCount) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuExternalTextureDestroy(WGPUExternalTexture externalTexture) WGPU_FUNCTION_ATTRIBUTE;
+
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 
 #ifdef __cplusplus

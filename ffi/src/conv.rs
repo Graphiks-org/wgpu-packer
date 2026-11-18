@@ -1772,7 +1772,15 @@ pub fn to_native_composite_alpha_mode(
 pub fn map_bind_group_entry<'a>(
     entry: &'a native::WGPUBindGroupEntry,
     extras: Option<&native::WGPUBindGroupEntryExtras>,
+    external: Option<&native::WGPUExternalTextureBindingEntry>,
 ) -> wgc::binding_model::BindGroupEntry<'a> {
+    // Standard WGPUExternalTextureBindingEntry chain: the native video path.
+    if let Some(handle) = external.and_then(|external| unsafe { external.externalTexture.as_ref() }) {
+        return wgc::binding_model::BindGroupEntry {
+            binding: entry.binding,
+            resource: wgc::binding_model::BindingResource::ExternalTexture(handle.id),
+        };
+    }
     if let Some(buffer) = unsafe { entry.buffer.as_ref() } {
         return wgc::binding_model::BindGroupEntry {
             binding: entry.binding,
@@ -1854,7 +1862,17 @@ pub fn map_bind_group_entry<'a>(
 pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
+    external: Option<&native::WGPUExternalTextureBindingLayout>,
 ) -> wgt::BindGroupLayoutEntry {
+    // Standard WGPUExternalTextureBindingLayout chain: the native video path.
+    if external.is_some() {
+        return wgt::BindGroupLayoutEntry {
+            binding: entry.binding,
+            visibility: from_u64_bits(entry.visibility).expect("invalid visibility for external texture binding layout"),
+            ty: wgt::BindingType::ExternalTexture,
+            count: None,
+        };
+    }
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
     let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
     let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_BindingNotUsed;

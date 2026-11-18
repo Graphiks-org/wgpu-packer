@@ -456,3 +456,124 @@ pub unsafe extern "C" fn wgpuCommandEncoderMarkAccelerationStructuresBuilt(
         },
     )
 }
+
+// ---------------------------------------------------------------------------
+// External textures (native video path).
+// ---------------------------------------------------------------------------
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateExternalTexture(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUExternalTextureDescriptor>,
+    planes: *const native::WGPUTextureView,
+    plane_count: usize,
+) -> native::WGPUExternalTexture {
+    crate::ffi_utils::contain_entry(
+        "wgpuDeviceCreateExternalTexture",
+        std::ptr::null(),
+        || {
+        let device = device.as_ref().expect("invalid device");
+        let descriptor = descriptor.expect("invalid descriptor");
+
+        fn map_format(format: native::WGPUNativeExternalTextureFormat) -> wgt::ExternalTextureFormat {
+            match format {
+                native::WGPUNativeExternalTextureFormat_Rgba => wgt::ExternalTextureFormat::Rgba,
+                native::WGPUNativeExternalTextureFormat_Nv12 => wgt::ExternalTextureFormat::Nv12,
+                native::WGPUNativeExternalTextureFormat_Yu12 => wgt::ExternalTextureFormat::Yu12,
+                _ => panic!("invalid external texture format"),
+            }
+        }
+
+        let desc = wgt::ExternalTextureDescriptor {
+            label: string_view_into_label(descriptor.label),
+            width: descriptor.width,
+            height: descriptor.height,
+            format: map_format(descriptor.format),
+            yuv_conversion_matrix: descriptor.yuvConversionMatrix,
+            gamut_conversion_matrix: descriptor.gamutConversionMatrix,
+            src_transfer_function: wgt::ExternalTextureTransferFunction {
+                a: descriptor.srcTransferFunction.a,
+                b: descriptor.srcTransferFunction.b,
+                g: descriptor.srcTransferFunction.g,
+                k: descriptor.srcTransferFunction.k,
+            },
+            dst_transfer_function: wgt::ExternalTextureTransferFunction {
+                a: descriptor.dstTransferFunction.a,
+                b: descriptor.dstTransferFunction.b,
+                g: descriptor.dstTransferFunction.g,
+                k: descriptor.dstTransferFunction.k,
+            },
+            sample_transform: descriptor.sampleTransform,
+            load_transform: descriptor.loadTransform,
+        };
+
+        let plane_ids: Vec<wgc::id::TextureViewId> = make_slice(planes, plane_count)
+            .iter()
+            .map(|plane| {
+                plane
+                    .as_ref()
+                    .expect("invalid texture view for external texture plane")
+                    .id
+            })
+            .collect();
+
+        let (external_texture_id, error) =
+            device
+                .context
+                .device_create_external_texture(device.id, &desc, &plane_ids, None);
+        if let Some(cause) = error {
+            handle_error(
+                &device.error_sink,
+                cause,
+                desc.label,
+                "wgpuDeviceCreateExternalTexture",
+            );
+            return std::ptr::null();
+        }
+        Arc::into_raw(Arc::new(crate::objects::WGPUExternalTextureImpl {
+            context: device.context.clone(),
+            id: external_texture_id,
+        }))
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureDestroy(
+    external_texture: native::WGPUExternalTexture,
+) {
+    crate::ffi_utils::contain_entry("wgpuExternalTextureDestroy", (), || {
+        let external_texture = external_texture
+            .as_ref()
+            .expect("invalid external texture");
+        external_texture
+            .context
+            .external_texture_destroy(external_texture.id);
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureAddRef(
+    external_texture: native::WGPUExternalTexture,
+) {
+    crate::ffi_utils::contain_entry("wgpuExternalTextureAddRef", (), || {
+        assert!(
+            !external_texture.is_null(),
+            "invalid external texture"
+        );
+        Arc::increment_strong_count(external_texture);
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureRelease(
+    external_texture: native::WGPUExternalTexture,
+) {
+    crate::ffi_utils::contain_entry("wgpuExternalTextureRelease", (), || {
+        assert!(
+            !external_texture.is_null(),
+            "invalid external texture"
+        );
+        Arc::decrement_strong_count(external_texture);
+    })
+}

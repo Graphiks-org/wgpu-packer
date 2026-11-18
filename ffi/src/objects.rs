@@ -389,6 +389,19 @@ pub(crate) struct TextureData {
     pub(crate) texture_binding_view_dimension: native::WGPUTextureViewDimension,
 }
 
+pub struct WGPUExternalTextureImpl {
+    pub(crate) context: Arc<Context>,
+    pub(crate) id: id::ExternalTextureId,
+}
+
+impl Drop for WGPUExternalTextureImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.external_texture_drop(self.id);
+        }
+    }
+}
+
 pub struct WGPUBlasImpl {
     pub(crate) context: Arc<Context>,
     pub(crate) id: id::BlasId,
