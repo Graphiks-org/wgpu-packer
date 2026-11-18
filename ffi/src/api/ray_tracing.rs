@@ -13,11 +13,15 @@ use crate::{
 };
 use std::sync::Arc;
 
-fn map_as_flags(flags: u32) -> wgt::AccelerationStructureFlags {
+// The C enum types are `u32` on some targets and `i32` on others (clang
+// default per target): taking the native enum type keeps both compiling.
+fn map_as_flags(flags: native::WGPUNativeAsFlags) -> wgt::AccelerationStructureFlags {
     wgt::AccelerationStructureFlags::from_bits_retain(flags as u8)
 }
 
-fn map_geometry_flags(flags: u32) -> wgt::AccelerationStructureGeometryFlags {
+fn map_geometry_flags(
+    flags: native::WGPUNativeAsGeometryFlags,
+) -> wgt::AccelerationStructureGeometryFlags {
     wgt::AccelerationStructureGeometryFlags::from_bits_retain(flags as u8)
 }
 
