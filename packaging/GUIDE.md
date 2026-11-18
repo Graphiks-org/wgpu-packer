@@ -156,6 +156,19 @@ All of them chain through `nextInChain` and live only in `wgpu.h`:
   wgpu-types' `with_env`.
 - `WGPUNativePresentMode_AutoVsync` / `_AutoNoVsync`: browser-style
   automatic present modes, accepted in `WGPUSurfaceConfiguration`.
+- `wgpuDeviceCreateShaderModulePassthrough`: precompiled sources passed
+  through to the backend (SPIR-V words, DXIL, HLSL, MetalLib, MSL, GLSL,
+  WGSL) with named entry points and workgroup sizes. Bindings only work
+  for SPIR-V; at least one source must be set. Requires
+  `PassthroughShaders`.
+- `wgpuAdapterGetCooperativeMatrixProperties` (two-call): the supported
+  MxNxK cooperative-matrix configurations.
+- `wgpuSurfaceGetDisplayHdrInfo(adapter, surface)`: HDR metadata
+  (nits/EDR headroom/primaries/coarse range/bits). Absent platform
+  values are NAN (or -1 / 0 for the integer buckets).
+- `wgpuAdapterGetFormatCapabilities` fills a `WGPUFormatCapabilities`
+  OUT-chain (allowed usages + `WGPUNativeFormatFeatureFlags`) when the
+  caller chains it in `WGPUDawnFormatCapabilities.nextInChain`.
 - `WGPUDeviceExtras.tracePath` is now live (api trace capture): it costs
   ~2.6 MB of trace serialization in the static library.
 

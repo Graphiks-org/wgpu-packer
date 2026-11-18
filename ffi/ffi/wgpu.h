@@ -51,6 +51,8 @@ typedef enum WGPUNativeSType
     WGPUSType_ProgrammableStageDescriptorExtras = 0x00030012,
     /** Identifies @ref WGPUComputePipelineDescriptorExtras. */
     WGPUSType_ComputePipelineDescriptorExtras = 0x00030013,
+    /** Identifies the @ref WGPUFormatCapabilities OUT-chain. */
+    WGPUSType_FormatCapabilities = 0x00030014,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1839,6 +1841,146 @@ WGPU_EXPORT void wgpuPipelineCacheRelease(WGPUPipelineCache pipelineCache) WGPU_
  * are internal wgpu uses, not @ref WGPUBufferUsage flags.
  */
 WGPU_EXPORT void wgpuCommandEncoderTransitionResources(WGPUCommandEncoder commandEncoder, WGPUBufferTransition const * bufferTransitions, size_t bufferTransitionCount, WGPUNativeTextureTransition const * textureTransitions, size_t textureTransitionCount) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * wgpu-types' TextureFormatFeatureFlags, bit for bit: what a format
+ * supports beyond its allowed usages.
+ */
+typedef enum WGPUNativeFormatFeatureFlags {
+    WGPUNativeFormatFeatureFlags_Filterable = 1 << 0,
+    WGPUNativeFormatFeatureFlags_MultisampleX2 = 1 << 1,
+    WGPUNativeFormatFeatureFlags_MultisampleX4 = 1 << 2,
+    WGPUNativeFormatFeatureFlags_MultisampleX8 = 1 << 3,
+    WGPUNativeFormatFeatureFlags_MultisampleX16 = 1 << 4,
+    WGPUNativeFormatFeatureFlags_MultisampleResolve = 1 << 5,
+    WGPUNativeFormatFeatureFlags_StorageReadOnly = 1 << 6,
+    WGPUNativeFormatFeatureFlags_StorageWriteOnly = 1 << 7,
+    WGPUNativeFormatFeatureFlags_Force32 = 0x7FFFFFFF
+} WGPUNativeFormatFeatureFlags;
+
+/**
+ * OUT-chain of @ref WGPUDawnFormatCapabilities: the real per-format
+ * capabilities (allowed usages + feature flags). Consumers chain it in
+ * their WGPUDawnFormatCapabilities.nextInChain before the call.
+ */
+typedef struct WGPUFormatCapabilities {
+    struct WGPUChainedStructOut * chain;
+    WGPUTextureUsage allowedUsages;
+    WGPUNativeFormatFeatureFlags flags;
+} WGPUFormatCapabilities;
+
+/** Element types of a cooperative-matrix configuration. */
+typedef enum WGPUNativeCooperativeScalarType {
+    WGPUNativeCooperativeScalarType_F32 = 0x00000000,
+    WGPUNativeCooperativeScalarType_F16 = 0x00000001,
+    WGPUNativeCooperativeScalarType_I32 = 0x00000002,
+    WGPUNativeCooperativeScalarType_U32 = 0x00000003,
+    WGPUNativeCooperativeScalarType_Force32 = 0x7FFFFFFF
+} WGPUNativeCooperativeScalarType;
+
+/** One supported cooperative-matrix (MxNxK, types) configuration. */
+typedef struct WGPUCooperativeMatrixProperties {
+    WGPUChainedStruct const * nextInChain;
+    uint32_t mSize;
+    uint32_t nSize;
+    uint32_t kSize;
+    WGPUNativeCooperativeScalarType abType;
+    WGPUNativeCooperativeScalarType crType;
+    WGPUBool saturatingAccumulation;
+} WGPUCooperativeMatrixProperties;
+
+/**
+ * Two-call query: with a NULL out, writes the total to *count; otherwise
+ * fills at most *count entries and writes the filled count.
+ */
+WGPU_EXPORT WGPUStatus wgpuAdapterGetCooperativeMatrixProperties(WGPUAdapter adapter, size_t * count, WGPU_NULLABLE WGPUCooperativeMatrixProperties * properties) WGPU_FUNCTION_ATTRIBUTE;
+
+/** CSS color-gamut bucket of a display. */
+typedef enum WGPUNativeDisplayGamut {
+    WGPUNativeDisplayGamut_Srgb = 0x00000000,
+    WGPUNativeDisplayGamut_DisplayP3 = 0x00000001,
+    WGPUNativeDisplayGamut_Rec2020 = 0x00000002,
+    WGPUNativeDisplayGamut_Force32 = 0x7FFFFFFF
+} WGPUNativeDisplayGamut;
+
+/** Coarse dynamic-range + gamut bucket. -1 = unknown. */
+typedef struct WGPUDisplayCoarseRange {
+    /** 1 = HDR-capable, 0 = definitively SDR, -1 = unknown. */
+    int32_t highDynamicRange;
+    /** Gamut bucket, or -1 = unknown. */
+    int32_t gamut;
+} WGPUDisplayCoarseRange;
+
+/** Absolute nits (cd/m^2). NAN = unreported (Windows/DXGI only). */
+typedef struct WGPUDisplayLuminance {
+    float maxNits;
+    float maxFullFrameNits;
+    float minNits;
+    float sdrWhiteNits;
+} WGPUDisplayLuminance;
+
+/** Relative EDR multipliers. NAN = unreported (Apple only). */
+typedef struct WGPUDisplayHeadroom {
+    float current;
+    float potential;
+} WGPUDisplayHeadroom;
+
+/** CIE 1931 xy chromaticities. NAN = unreported. */
+typedef struct WGPUDisplayChromaticity {
+    float red[2];
+    float green[2];
+    float blue[2];
+    float white[2];
+} WGPUDisplayChromaticity;
+
+/**
+ * HDR metadata of a surface's display. Absent platform values are NAN
+ * (or -1 for the integer buckets); bitsPerColor 0 = unreported.
+ */
+typedef struct WGPUDisplayHdrInfo {
+    WGPUChainedStruct const * nextInChain;
+    WGPUDisplayLuminance luminance;
+    WGPUDisplayHeadroom headroom;
+    WGPUDisplayChromaticity chromaticity;
+    WGPUDisplayCoarseRange coarse;
+    uint32_t bitsPerColor;
+} WGPUDisplayHdrInfo;
+
+WGPU_EXPORT WGPUStatus wgpuSurfaceGetDisplayHdrInfo(WGPUAdapter adapter, WGPUSurface surface, WGPUDisplayHdrInfo * info) WGPU_FUNCTION_ATTRIBUTE;
+
+/** One entry point of a passthrough shader (workgroup sizes: Metal). */
+typedef struct WGPUPassthroughShaderEntryPoint {
+    WGPUStringView name;
+    uint32_t workgroupSizeX;
+    uint32_t workgroupSizeY;
+    uint32_t workgroupSizeZ;
+} WGPUPassthroughShaderEntryPoint;
+
+/**
+ * Precompiled shader sources passed through to the backend. Set the
+ * source(s) your target backends consume; at least one must be non-empty
+ * (wgpu-core panics otherwise - the packer validates first). Bindings
+ * only work for SPIR-V. Requires the PassthroughShaders feature.
+ */
+typedef struct WGPUShaderModuleDescriptorPassthrough {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    WGPUPassthroughShaderEntryPoint const * entryPoints;
+    size_t entryPointCount;
+    /** SPIR-V words. */
+    uint32_t const * spirv;
+    size_t spirvWordCount;
+    uint8_t const * dxil;
+    size_t dxilSize;
+    WGPUStringView hlsl;
+    uint8_t const * metallib;
+    size_t metallibSize;
+    WGPUStringView msl;
+    WGPUStringView glsl;
+    WGPUStringView wgsl;
+} WGPUShaderModuleDescriptorPassthrough;
+
+WGPU_EXPORT WGPU_NULLABLE WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

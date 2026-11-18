@@ -341,3 +341,71 @@ pub unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetDisplayHdrInfo(
+    adapter: native::WGPUAdapter,
+    surface: native::WGPUSurface,
+    info: *mut native::WGPUDisplayHdrInfo,
+) -> native::WGPUStatus {
+    crate::ffi_utils::contain_entry(
+        "wgpuSurfaceGetDisplayHdrInfo",
+        native::WGPUStatus_Error,
+        || {
+        let surface = surface.as_ref().expect("invalid surface");
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        let info = info.as_mut().expect("invalid return pointer \"info\"");
+
+        let hdr = adapter
+            .context
+            .surface_display_hdr_info(surface.id, adapter.id);
+
+        fn f(v: Option<f32>) -> f32 {
+            v.unwrap_or(f32::NAN)
+        }
+        fn opt2(v: Option<[f32; 2]>) -> [f32; 2] {
+            v.unwrap_or([f32::NAN, f32::NAN])
+        }
+
+        *info = native::WGPUDisplayHdrInfo {
+            nextInChain: std::ptr::null(),
+            luminance: native::WGPUDisplayLuminance {
+                maxNits: f(hdr.luminance.and_then(|l| l.max_nits)),
+                maxFullFrameNits: f(hdr.luminance.and_then(|l| l.max_full_frame_nits)),
+                minNits: f(hdr.luminance.and_then(|l| l.min_nits)),
+                sdrWhiteNits: f(hdr.luminance.and_then(|l| l.sdr_white_nits)),
+            },
+            headroom: native::WGPUDisplayHeadroom {
+                current: f(hdr.headroom.and_then(|h| h.current)),
+                potential: f(hdr.headroom.and_then(|h| h.potential)),
+            },
+            chromaticity: native::WGPUDisplayChromaticity {
+                red: opt2(hdr.chromaticity.and_then(|c| c.red)),
+                green: opt2(hdr.chromaticity.and_then(|c| c.green)),
+                blue: opt2(hdr.chromaticity.and_then(|c| c.blue)),
+                white: opt2(hdr.chromaticity.and_then(|c| c.white)),
+            },
+            coarse: native::WGPUDisplayCoarseRange {
+                highDynamicRange: hdr
+                    .coarse
+                    .and_then(|c| c.high_dynamic_range)
+                    .map(|b| b as i32)
+                    .unwrap_or(-1),
+                gamut: hdr
+                    .coarse
+                    .and_then(|c| c.gamut)
+                    .map(|g| match g {
+                        wgt::DisplayGamut::Srgb => native::WGPUNativeDisplayGamut_Srgb as i32,
+                        wgt::DisplayGamut::DisplayP3 => native::WGPUNativeDisplayGamut_DisplayP3 as i32,
+                        wgt::DisplayGamut::Rec2020 => native::WGPUNativeDisplayGamut_Rec2020 as i32,
+                        // non_exhaustive upstream: an unknown gamut stays unknown.
+                        _ => -1,
+                    })
+                    .unwrap_or(-1),
+            },
+            bitsPerColor: hdr.bits_per_color.unwrap_or(0) as u32,
+        };
+        native::WGPUStatus_Success
+        },
+    )
+}

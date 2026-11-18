@@ -84,6 +84,62 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetCooperativeMatrixProperties(
+    adapter: native::WGPUAdapter,
+    count: Option<&mut usize>,
+    properties: *mut native::WGPUCooperativeMatrixProperties,
+) -> native::WGPUStatus {
+    crate::ffi_utils::contain_entry(
+        "wgpuAdapterGetCooperativeMatrixProperties",
+        native::WGPUStatus_Error,
+        || {
+
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        let count = count.expect("invalid return pointer \"count\"");
+
+        fn map_scalar(value: wgt::CooperativeScalarType) -> native::WGPUNativeCooperativeScalarType {
+            match value {
+                wgt::CooperativeScalarType::F32 => native::WGPUNativeCooperativeScalarType_F32,
+                wgt::CooperativeScalarType::F16 => native::WGPUNativeCooperativeScalarType_F16,
+                wgt::CooperativeScalarType::I32 => native::WGPUNativeCooperativeScalarType_I32,
+                wgt::CooperativeScalarType::U32 => native::WGPUNativeCooperativeScalarType_U32,
+            }
+        }
+
+        let all: Vec<_> = adapter
+            .context
+            .adapter_cooperative_matrix_properties(adapter.id)
+            .into_iter()
+            .map(|props| native::WGPUCooperativeMatrixProperties {
+                nextInChain: std::ptr::null(),
+                mSize: props.m_size,
+                nSize: props.n_size,
+                kSize: props.k_size,
+                abType: map_scalar(props.ab_type),
+                crType: map_scalar(props.cr_type),
+                saturatingAccumulation: props.saturating_accumulation as native::WGPUBool,
+            })
+            .collect();
+
+        // Two-call protocol: a NULL buffer returns the total.
+        if properties.is_null() {
+            *count = all.len();
+        } else {
+            let fill = (*count).min(all.len());
+            for (out, props) in std::iter::zip(
+                std::slice::from_raw_parts_mut(properties, fill),
+                all.into_iter().take(fill),
+            ) {
+                *out = props;
+            }
+            *count = fill;
+        }
+        native::WGPUStatus_Success
+        },
+    )
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
@@ -276,9 +332,28 @@ pub unsafe extern "C" fn wgpuAdapterGetFormatCapabilities(
         let adapter_ref = adapter.as_ref().expect("invalid adapter");
         match conv::map_texture_format(format) {
             Some(format) => {
-                let _features = adapter_ref
+                let features = adapter_ref
                     .context
                     .adapter_get_texture_format_features(adapter_ref.id, format);
+                // Fill the caller's WGPUFormatCapabilities OUT-chain when
+                // present: the Dawn struct itself carries no data field.
+                if let Some(capabilities) = _capabilities {
+                    // Fill every WGPUFormatCapabilities node of the out-chain
+                    // in place; the chain nodes themselves stay untouched.
+                    let mut chain = capabilities.nextInChain;
+                    while let Some(link) = unsafe { chain.as_ref() } {
+                        if link.sType == native::WGPUSType_FormatCapabilities {
+                            let out = link as *const native::WGPUChainedStruct
+                                as *mut native::WGPUFormatCapabilities;
+                            unsafe {
+                                (*out).allowedUsages = features.allowed_usages.bits() as u64;
+                                (*out).flags =
+                                    features.flags.bits() as native::WGPUNativeFormatFeatureFlags;
+                            }
+                        }
+                        chain = link.next;
+                    }
+                }
                 native::WGPUStatus_Success
             }
             None => native::WGPUStatus_Error,

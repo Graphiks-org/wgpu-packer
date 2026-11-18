@@ -1730,3 +1730,92 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUShaderModuleDescriptorPassthrough>,
+) -> native::WGPUShaderModule {
+    crate::ffi_utils::contain_entry(
+        "wgpuDeviceCreateShaderModulePassthrough",
+        std::ptr::null(),
+        || {
+        let (device_id, context, error_sink) = {
+            let device = device.as_ref().expect("invalid device");
+            (device.id, &device.context, &device.error_sink)
+        };
+        let descriptor =
+            descriptor.expect("invalid descriptor for wgpuDeviceCreateShaderModulePassthrough");
+        let label = string_view_into_label(descriptor.label);
+
+        let cow_u32 = |ptr: *const u32, words: usize| -> Option<Cow<[u32]>> {
+            (words > 0).then(|| Cow::Borrowed(make_slice(ptr, words)))
+        };
+        let cow_u8 = |ptr: *const u8, size: usize| -> Option<Cow<[u8]>> {
+            (size > 0).then(|| Cow::Borrowed(make_slice(ptr, size)))
+        };
+        let cow_str = |view: native::WGPUStringView| -> Option<Cow<str>> {
+            unsafe { string_view_into_str(view) }.map(|s| s.to_string().into())
+        };
+
+        let desc = wgt::CreateShaderModuleDescriptorPassthrough {
+            label,
+            entry_points: make_slice(descriptor.entryPoints, descriptor.entryPointCount)
+                .iter()
+                .map(|entry| wgt::PassthroughShaderEntryPoint {
+                    name: string_view_into_str(entry.name).unwrap_or("").to_string().into(),
+                    workgroup_size: (
+                        entry.workgroupSizeX,
+                        entry.workgroupSizeY,
+                        entry.workgroupSizeZ,
+                    ),
+                })
+                .collect(),
+            spirv: cow_u32(descriptor.spirv, descriptor.spirvWordCount),
+            dxil: cow_u8(descriptor.dxil, descriptor.dxilSize),
+            hlsl: cow_str(descriptor.hlsl),
+            metallib: cow_u8(descriptor.metallib, descriptor.metallibSize),
+            msl: cow_str(descriptor.msl),
+            glsl: cow_str(descriptor.glsl),
+            wgsl: cow_str(descriptor.wgsl),
+        };
+
+        // wgpu-core panics when every source is None: reject first.
+        let has_source = [
+            desc.spirv.is_some(),
+            desc.dxil.is_some(),
+            desc.hlsl.is_some(),
+            desc.metallib.is_some(),
+            desc.msl.is_some(),
+            desc.glsl.is_some(),
+            desc.wgsl.is_some(),
+        ]
+        .into_iter()
+        .any(|has| has);
+        if !has_source {
+            log::error!(
+                "wgpuDeviceCreateShaderModulePassthrough: no source set \
+                 (one of spirv/dxil/hlsl/metallib/msl/glsl/wgsl is required)"
+            );
+            return std::ptr::null();
+        }
+
+        let (id, error) =
+            context.device_create_shader_module_passthrough(device_id, &desc, None);
+        if let Some(cause) = error {
+            handle_error(
+                error_sink,
+                cause,
+                desc.label,
+                "wgpuDeviceCreateShaderModulePassthrough",
+            );
+            return std::ptr::null();
+        }
+        Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
+            context: context.clone(),
+            id: Some(id),
+            messages: Vec::new(),
+        }))
+        },
+    )
+}
