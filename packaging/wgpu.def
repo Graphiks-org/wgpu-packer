@@ -4,4 +4,4 @@ staticLibraries = libwgpu_packer.a
 libraryPaths = ./lib
 # Drapeaux de liaison par plateforme : reprendre lib/link.txt de l'archive.
 # macOS :
-linkerOpts = -framework Metal -framework QuartzCore -framework CoreVideo -framework IOKit -framework Foundation
+linkerOpts = -framework Metal -framework QuartzCore -framework CoreGraphics -framework CoreVideo -framework IOKit -framework Foundation

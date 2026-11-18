@@ -78,6 +78,7 @@ python3 tests/test_manifest.py
 python3 tests/test_android_targets.py
 bash scripts/test_pipeline.sh
 bash scripts/test_packaging.sh
+bash scripts/cinterop-smoke.sh   # Kotlin/Native consumer path (brew install kotlin-native)
 ```
 
 ## Consuming from Kotlin

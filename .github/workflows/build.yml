@@ -50,6 +50,24 @@ jobs:
       - run: python3 tests/test_version.py && python3 tests/test_unimplemented.py && python3 tests/test_ci.py && python3 tests/test_manifest.py && python3 tests/test_android_targets.py
       - run: bash scripts/test_pipeline.sh && bash scripts/test_packaging.sh
 
+  cinterop_smoke:
+    # D7 (independent review): the contract as the real consumer sees it —
+    # Kotlin/Native cinterop against packaging/wgpu.def + the static
+    # library, then a Kotlin program that RUNS and checks the values the
+    # header declares (GetLimits status, GetVersion, enumeration,
+    # FreeMembers). This is where the GetLimits return-type regression
+    # (invisible to the Rust oracles) would have been caught.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: cargo build --release -p wgpu-packer-ffi
+      - run: brew install kotlin-native
+      - run: xattr -dr com.apple.quarantine "$(brew --prefix)/Caskroom/kotlin-native" || true
+      - run: bash scripts/cinterop-smoke.sh
+
   build:
     needs: [oracle_macos, oracle_linux, oracle_windows]
     strategy:
