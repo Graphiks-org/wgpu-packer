@@ -1453,3 +1453,143 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
         },
     )
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawMeshTasks(
+    pass: native::WGPURenderPassEncoder,
+    group_count_x: u32,
+    group_count_y: u32,
+    group_count_z: u32,
+) {
+    crate::ffi_utils::contain_entry("wgpuRenderPassEncoderDrawMeshTasks", (), || {
+        let pass = pass.as_ref().expect("invalid render pass");
+        let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDrawMeshTasks");
+        match pass
+            .context
+            .render_pass_draw_mesh_tasks(encoder, group_count_x, group_count_y, group_count_z)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderDrawMeshTasks",
+            ),
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawMeshTasksIndirect(
+    pass: native::WGPURenderPassEncoder,
+    indirect_buffer: native::WGPUBuffer,
+    indirect_offset: u64,
+) {
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderDrawMeshTasksIndirect",
+        (),
+        || {
+        let pass = pass.as_ref().expect("invalid render pass");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderDrawMeshTasksIndirect");
+        match pass
+            .context
+            .render_pass_draw_mesh_tasks_indirect(encoder, indirect_buffer_id, indirect_offset)
+        {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderDrawMeshTasksIndirect",
+            ),
+        }
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(
+    pass: native::WGPURenderPassEncoder,
+    indirect_buffer: native::WGPUBuffer,
+    indirect_offset: u64,
+    max_count: u32,
+) {
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawMeshTasksIndirect",
+        (),
+        || {
+        let pass = pass.as_ref().expect("invalid render pass");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderMultiDrawMeshTasksIndirect");
+        match pass.context.render_pass_multi_draw_mesh_tasks_indirect(
+            encoder,
+            indirect_buffer_id,
+            indirect_offset,
+            max_count,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawMeshTasksIndirect",
+            ),
+        }
+        },
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(
+    pass: native::WGPURenderPassEncoder,
+    indirect_buffer: native::WGPUBuffer,
+    indirect_offset: u64,
+    count_buffer: native::WGPUBuffer,
+    count_buffer_offset: u64,
+    max_count: u32,
+) {
+    crate::ffi_utils::contain_entry(
+        "wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount",
+        (),
+        || {
+        let pass = pass.as_ref().expect("invalid render pass");
+        let indirect_buffer_id = indirect_buffer
+            .as_ref()
+            .expect("invalid indirect buffer")
+            .id;
+        let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+        let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+        check_draw_count(pass, "wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount");
+        match pass.context.render_pass_multi_draw_mesh_tasks_indirect_count(
+            encoder,
+            indirect_buffer_id,
+            indirect_offset,
+            count_buffer_id,
+            count_buffer_offset,
+            max_count,
+        ) {
+            Ok(()) => (),
+            Err(cause) => handle_error(
+                &pass.error_sink,
+                cause,
+                None,
+                "wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount",
+            ),
+        }
+        },
+    )
+}

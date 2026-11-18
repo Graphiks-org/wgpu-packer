@@ -1819,3 +1819,182 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
         },
     )
 }
+
+/// Maps a WGPUComputeState (task/mesh stage of a mesh pipeline) to wgc's
+/// ProgrammableStageDescriptor.
+unsafe fn map_compute_state(
+    state: &native::WGPUComputeState,
+) -> wgc::pipeline::ProgrammableStageDescriptor {
+    wgc::pipeline::ProgrammableStageDescriptor {
+        module: state
+            .module
+            .as_ref()
+            .expect("invalid shader module for stage")
+            .id
+            .expect("invalid shader module for stage"),
+        entry_point: string_view_into_label(state.entryPoint),
+        constants: make_slice(state.constants, state.constantCount)
+            .iter()
+            .map(|entry| {
+                (
+                    string_view_into_str(entry.key).unwrap_or("").to_string(),
+                    entry.value,
+                )
+            })
+            .collect(),
+        zero_initialize_workgroup_memory: zero_init_from_chain(state.nextInChain),
+    }
+}
+
+unsafe fn map_mesh_pipeline_descriptor(
+    descriptor: &native::WGPUMeshPipelineDescriptor,
+) -> wgc::pipeline::MeshPipelineDescriptor {
+    wgc::pipeline::MeshPipelineDescriptor {
+        label: string_view_into_label(descriptor.label),
+        layout: descriptor.layout.as_ref().map(|v| v.id),
+        task: descriptor.task.as_ref().map(|task| wgc::pipeline::TaskState {
+            stage: map_compute_state(task),
+        }),
+        mesh: wgc::pipeline::MeshState {
+            stage: map_compute_state(
+                descriptor
+                    .mesh
+                    .as_ref()
+                    .expect("invalid mesh stage for mesh pipeline descriptor"),
+            ),
+        },
+        primitive: {
+            follow_chain!(map_primitive_state((descriptor.primitive), WGPUSType_PrimitiveStateExtras => native::WGPUPrimitiveStateExtras))
+        },
+        depth_stencil: descriptor.depthStencil.as_ref().map(|desc| {
+            let format = conv::map_texture_format(desc.format)
+                .expect("invalid texture format for depth stencil state");
+
+            // Validation per spec.
+            if texture_format_has_depth(format) {
+                if desc.depthWriteEnabled == native::WGPUOptionalBool_Undefined {
+                    panic!("Depth write not specified for depth format")
+                }
+            } else if desc.depthWriteEnabled == native::WGPUOptionalBool_True {
+                panic!("Depth write enabled for non-depth format")
+            }
+
+            wgt::DepthStencilState {
+                format,
+                depth_write_enabled: Some(desc.depthWriteEnabled == native::WGPUOptionalBool_True),
+                // `WGPUCompareFunction_Undefined` is legal in webgpu.h: the
+                // spec requires depthCompare only when depthWriteEnabled is
+                // true or a stencil depthFailOp is not "keep". wgpu-core has
+                // no undefined variant, so it maps to Always, which is the
+                // identity of the comparison (every fragment passes).
+                depth_compare: Some(
+                    conv::map_compare_function(desc.depthCompare)
+                        .expect("invalid depth compare function for depth stencil state")
+                        .unwrap_or(wgt::CompareFunction::Always),
+                ),
+                stencil: wgt::StencilState {
+                    front: conv::map_stencil_face_state(desc.stencilFront, "front"),
+                    back: conv::map_stencil_face_state(desc.stencilBack, "back"),
+                    read_mask: desc.stencilReadMask,
+                    write_mask: desc.stencilWriteMask,
+                },
+                bias: wgt::DepthBiasState {
+                    constant: desc.depthBias,
+                    slope_scale: desc.depthBiasSlopeScale,
+                    clamp: desc.depthBiasClamp,
+                },
+            }
+        }),
+        multisample: wgt::MultisampleState {
+            count: descriptor.multisample.count,
+            mask: descriptor.multisample.mask as u64,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled != 0,
+        },
+        fragment: descriptor
+            .fragment
+            .as_ref()
+            .map(|fragment| wgc::pipeline::FragmentState {
+                stage: wgc::pipeline::ProgrammableStageDescriptor {
+                    module: fragment
+                        .module
+                        .as_ref()
+                        .expect("invalid fragment shader module for fragment state")
+                        .id
+                        .expect("invalid fragment shader module for fragment state"),
+                    entry_point: string_view_into_label(fragment.entryPoint),
+                    constants: make_slice(fragment.constants, fragment.constantCount)
+                        .iter()
+                        .map(|entry| {
+                            (
+                                string_view_into_str(entry.key).unwrap_or("").to_string(),
+                                entry.value,
+                            )
+                        })
+                        .collect(),
+                    // No C knob for this yet: the WGSL spec default is false.
+                    zero_initialize_workgroup_memory: zero_init_from_chain(fragment.nextInChain),
+                },
+                targets: Cow::Owned(
+                    make_slice(fragment.targets, fragment.targetCount)
+                        .iter()
+                        .map(|color_target| {
+                            conv::map_texture_format(color_target.format).map(|format| {
+                                wgt::ColorTargetState {
+                                    format,
+                                    blend: color_target.blend.as_ref().map(|blend| {
+                                        wgt::BlendState {
+                                            color: conv::map_blend_component(blend.color),
+                                            alpha: conv::map_blend_component(blend.alpha),
+                                        }
+                                    }),
+                                    write_mask: from_u64_bits(color_target.writeMask).unwrap(),
+                                }
+                            })
+                        })
+                        .collect(),
+                ),
+            }),
+        multiview: std::num::NonZeroU32::new(descriptor.multiview),
+        cache: descriptor
+            .cache
+            .as_ref()
+            .map(|cache| cache.id),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUMeshPipelineDescriptor>,
+) -> native::WGPURenderPipeline {
+    crate::ffi_utils::contain_entry(
+        "wgpuDeviceCreateMeshPipeline",
+        std::ptr::null(),
+        || {
+
+        let (device_id, context, error_sink) = {
+            let device = device.as_ref().expect("invalid device");
+            (device.id, &device.context, &device.error_sink)
+        };
+        let descriptor = descriptor.expect("invalid descriptor");
+
+        let desc = map_mesh_pipeline_descriptor(descriptor);
+
+        let (pipeline_id, error) = context.device_create_mesh_pipeline(device_id, &desc, None);
+        if let Some(cause) = error {
+            if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
+                log::error!("Shader translation error for stage {:?}: {}", stage, error);
+                log::error!("Please report it to https://github.com/gfx-rs/wgpu");
+            }
+            handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateMeshPipeline");
+            return std::ptr::null();
+        }
+
+        Arc::into_raw(Arc::new(WGPURenderPipelineImpl {
+            context: context.clone(),
+            id: pipeline_id,
+            error_sink: error_sink.clone(),
+        }))
+        },
+    )
+}

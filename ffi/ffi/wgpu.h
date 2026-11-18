@@ -1261,6 +1261,23 @@ typedef struct WGPUNativeLimits
      * The maximum number of views that can be used in multiview rendering.
      */
     uint32_t maxMultiviewViewCount;
+    /**
+     * Mesh-shader limits (wgpu-types; all default to 0 — request
+     * explicitly). Undefined (0xFFFFFFFF) means "adapter default".
+     */
+    uint32_t maxTaskWorkgroupTotalCount;
+    uint32_t maxTaskWorkgroupsPerDimension;
+    uint32_t maxMeshWorkgroupTotalCount;
+    uint32_t maxMeshWorkgroupsPerDimension;
+    uint32_t maxTaskInvocationsPerWorkgroup;
+    uint32_t maxTaskInvocationsPerDimension;
+    uint32_t maxMeshInvocationsPerWorkgroup;
+    uint32_t maxMeshInvocationsPerDimension;
+    uint32_t maxTaskPayloadSize;
+    uint32_t maxMeshOutputVertices;
+    uint32_t maxMeshOutputPrimitives;
+    uint32_t maxMeshOutputLayers;
+    uint32_t maxMeshMultiviewViewCount;
 } WGPUNativeLimits;
 
 #define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
@@ -1272,6 +1289,19 @@ typedef struct WGPUNativeLimits
     /*.maxBindingArrayElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxBindingArraySamplerElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskWorkgroupTotalCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskWorkgroupsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshWorkgroupTotalCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshWorkgroupsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskInvocationsPerWorkgroup=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskInvocationsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshInvocationsPerWorkgroup=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshInvocationsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskPayloadSize=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputVertices=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputPrimitives=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputLayers=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
 
 /**
@@ -1981,6 +2011,34 @@ typedef struct WGPUShaderModuleDescriptorPassthrough {
 } WGPUShaderModuleDescriptorPassthrough;
 
 WGPU_EXPORT WGPU_NULLABLE WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
+
+/**
+ * A mesh-shading pipeline: task (optional) + mesh + fragment stages, no
+ * vertex stage. Requires the experimental opt-in
+ * (WGPUExperimentalFeaturesExtras) and the MeshShader feature(s).
+ */
+typedef struct WGPUMeshPipelineDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    WGPU_NULLABLE WGPUPipelineLayout layout;
+    /** Optional task (amplification) stage. */
+    WGPU_NULLABLE WGPUComputeState const * task;
+    WGPUComputeState const * mesh;
+    WGPUPrimitiveState primitive;
+    WGPU_NULLABLE WGPUDepthStencilState const * depthStencil;
+    WGPUMultisampleState multisample;
+    WGPU_NULLABLE WGPUFragmentState const * fragment;
+    /** 0 = all views. */
+    uint32_t multiview;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+} WGPUMeshPipelineDescriptor;
+
+WGPU_EXPORT WGPU_NULLABLE WGPURenderPipeline wgpuDeviceCreateMeshPipeline(WGPUDevice device, WGPUMeshPipelineDescriptor const * descriptor) WGPU_FUNCTION_ATTRIBUTE;
+
+WGPU_EXPORT void wgpuRenderPassEncoderDrawMeshTasks(WGPURenderPassEncoder encoder, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

@@ -676,6 +676,20 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             (*native_limits).maxBindingArraySamplerElementsPerShaderStage =
                 wgt_limits.max_binding_array_sampler_elements_per_shader_stage;
             (*native_limits).maxMultiviewViewCount = wgt_limits.max_multiview_view_count;
+            (*native_limits).maxTaskWorkgroupTotalCount = wgt_limits.max_task_workgroup_total_count;
+            (*native_limits).maxTaskWorkgroupsPerDimension = wgt_limits.max_task_workgroups_per_dimension;
+            (*native_limits).maxMeshWorkgroupTotalCount = wgt_limits.max_mesh_workgroup_total_count;
+            (*native_limits).maxMeshWorkgroupsPerDimension = wgt_limits.max_mesh_workgroups_per_dimension;
+            (*native_limits).maxTaskInvocationsPerWorkgroup = wgt_limits.max_task_invocations_per_workgroup;
+            (*native_limits).maxTaskInvocationsPerDimension = wgt_limits.max_task_invocations_per_dimension;
+            (*native_limits).maxMeshInvocationsPerWorkgroup = wgt_limits.max_mesh_invocations_per_workgroup;
+            (*native_limits).maxMeshInvocationsPerDimension = wgt_limits.max_mesh_invocations_per_dimension;
+            (*native_limits).maxTaskPayloadSize = wgt_limits.max_task_payload_size;
+            (*native_limits).maxMeshOutputVertices = wgt_limits.max_mesh_output_vertices;
+            (*native_limits).maxMeshOutputPrimitives = wgt_limits.max_mesh_output_primitives;
+            (*native_limits).maxMeshOutputLayers = wgt_limits.max_mesh_output_layers;
+            (*native_limits).maxMeshMultiviewViewCount = wgt_limits.max_mesh_multiview_view_count;
+
         }
     };
 }
@@ -799,6 +813,20 @@ pub fn map_required_limits(
         }
         if limits.maxMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_multiview_view_count = limits.maxMultiviewViewCount;
+            wgt_limits.max_task_workgroup_total_count = limits.maxTaskWorkgroupTotalCount;
+            wgt_limits.max_task_workgroups_per_dimension = limits.maxTaskWorkgroupsPerDimension;
+            wgt_limits.max_mesh_workgroup_total_count = limits.maxMeshWorkgroupTotalCount;
+            wgt_limits.max_mesh_workgroups_per_dimension = limits.maxMeshWorkgroupsPerDimension;
+            wgt_limits.max_task_invocations_per_workgroup = limits.maxTaskInvocationsPerWorkgroup;
+            wgt_limits.max_task_invocations_per_dimension = limits.maxTaskInvocationsPerDimension;
+            wgt_limits.max_mesh_invocations_per_workgroup = limits.maxMeshInvocationsPerWorkgroup;
+            wgt_limits.max_mesh_invocations_per_dimension = limits.maxMeshInvocationsPerDimension;
+            wgt_limits.max_task_payload_size = limits.maxTaskPayloadSize;
+            wgt_limits.max_mesh_output_vertices = limits.maxMeshOutputVertices;
+            wgt_limits.max_mesh_output_primitives = limits.maxMeshOutputPrimitives;
+            wgt_limits.max_mesh_output_layers = limits.maxMeshOutputLayers;
+            wgt_limits.max_mesh_multiview_view_count = limits.maxMeshMultiviewViewCount;
+
         }
     }
     wgt_limits
