@@ -197,6 +197,9 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
   `wgpuDeviceGetAllocatorReport` (totals + allocation/block counts;
   per-allocation detail is a documented follow-up).
 - `WGPUInstanceBackend_Noop`: the deterministic headless backend.
+- `WGPUMemoryHintsExtras` chained in the device descriptor: the
+  allocator strategy (Performance / MemoryUsage / Manual with a
+  sub-allocation block size range).
 - `WGPURequestAdapterOptionsExtras.applyLimitBuckets`: fingerprinting
   mitigation through wgt's limit bucketing.
 - Metal interop covers device, queue and texture (the raw accessors

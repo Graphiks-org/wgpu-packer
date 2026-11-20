@@ -574,8 +574,24 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
-            // No C knob for memory hints yet: wgpu-core picks its default.
-            memory_hints: Default::default(),
+            // WGPUMemoryHintsExtras chain: absent = wgpu-core's default
+            // (Performance). Manual caps the sub-allocation block growth.
+            memory_hints: match crate::utils::chain_entry::<native::WGPUMemoryHintsExtras>(
+                des.nextInChain,
+                native::WGPUSType_MemoryHintsExtras,
+            ) {
+                Some(hints) => match hints.mode {
+                    native::WGPUNativeMemoryHintsMode_MemoryUsage => {
+                        wgt::MemoryHints::MemoryUsage
+                    }
+                    native::WGPUNativeMemoryHintsMode_Manual => wgt::MemoryHints::Manual {
+                        suballocated_device_memory_block_size: hints.blockSizeMin
+                            ..hints.blockSizeMax,
+                    },
+                    _ => wgt::MemoryHints::Performance,
+                },
+                None => wgt::MemoryHints::default(),
+            },
             // WGPUDeviceExtras.tracePath, when the consumer chained it. The
             // `trace` crate feature is off in this build, so wgpu-types only
             // exposes `Trace::Off`: the field is read and honoured when the

@@ -55,6 +55,8 @@ typedef enum WGPUNativeSType
     WGPUSType_FormatCapabilities = 0x00030014,
     /** Identifies @ref WGPURequestAdapterOptionsExtras. */
     WGPUSType_RequestAdapterOptionsExtras = 0x00030015,
+    /** Identifies @ref WGPUMemoryHintsExtras. */
+    WGPUSType_MemoryHintsExtras = 0x00030016,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -602,8 +604,6 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_TextureFormatP010 = 0x00030029,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_ExternalTexture = 0x0003002A,
     /**
      * Allows the use of pipeline cache objects
      * 
@@ -636,9 +636,6 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ShaderInt64AtomicAllOps = 0x0003002D,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
-    // WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
     /**
      * Enables R64Uint image atomic min and max.
      * 
@@ -650,14 +647,6 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_TextureInt64Atomic = 0x00030030,
-    // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
-    // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShader = 0x00030032,
-    // WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
-    // WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
-    // WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
-    // WGPUNativeFeature_PassthroughShaders = 0x00030036,
     /**
      * Enables shader barycentric coordinates.
      * 
@@ -680,8 +669,6 @@ typedef enum WGPUNativeFeature
      * While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
      */
     WGPUNativeFeature_SelectiveMultiview = 0x00030038,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShaderPoints = 0x00030039,
     WGPUNativeFeature_MultisampleArray = 0x0003003A,
     /**
      * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
@@ -768,9 +755,8 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_MemoryDecorationVolatile = 0x00030040,
 
     /**
-     * Enables external textures (video frames imported from the platform).
-     * wgpu-core declares the feature; this packer does not expose the
-     * creation entry point yet.
+     * Enables external textures (video frames imported from the platform):
+     * wgpuDeviceCreateExternalTexture and the standard binding chains.
      */
     WGPUNativeFeature_ExternalTexture = 0x00030041,
     /** Vulkan: VK_GOOGLE_display_timing. */
@@ -2359,6 +2345,26 @@ typedef struct WGPUExternalTextureDescriptor {
 
 WGPU_EXPORT WGPU_NULLABLE WGPUExternalTexture wgpuDeviceCreateExternalTexture(WGPUDevice device, WGPUExternalTextureDescriptor const * descriptor, WGPUTextureView const * planes, size_t planeCount) WGPU_FUNCTION_ATTRIBUTE;
 WGPU_EXPORT void wgpuExternalTextureDestroy(WGPUExternalTexture externalTexture) WGPU_FUNCTION_ATTRIBUTE;
+
+/** wgpu-types' MemoryHints: how the allocator trades performance vs memory. */
+typedef enum WGPUNativeMemoryHintsMode {
+    WGPUNativeMemoryHintsMode_Performance = 0x00000000,
+    WGPUNativeMemoryHintsMode_MemoryUsage = 0x00000001,
+    WGPUNativeMemoryHintsMode_Manual = 0x00000002,
+    WGPUNativeMemoryHintsMode_Force32 = 0x7FFFFFFF
+} WGPUNativeMemoryHintsMode;
+
+/**
+ * Chained in @ref WGPUDeviceDescriptor: the allocator strategy. Manual
+ * caps the sub-allocated device memory block growth to
+ * [blockSizeMin, blockSizeMax] bytes.
+ */
+typedef struct WGPUMemoryHintsExtras {
+    WGPUChainedStruct chain;
+    WGPUNativeMemoryHintsMode mode;
+    uint64_t blockSizeMin;
+    uint64_t blockSizeMax;
+} WGPUMemoryHintsExtras;
 
 WGPU_EXPORT uint32_t wgpuDebugTriggerPanic(void);
 

@@ -256,10 +256,10 @@ unsafe fn map_compute_pipeline_descriptor(
                 )
             })
             .collect(),
-            // No C knob for this yet: the WGSL spec default is false.
+            // WGPUProgrammableStageDescriptorExtras chain (absent = spec default false).
             zero_initialize_workgroup_memory: zero_init_from_chain(descriptor.compute.nextInChain),
         },
-        // No C knob for a pipeline cache yet: every device starts without one.
+        // Pipeline cache via the descriptor's Extras chain (absent = none).
         cache: crate::utils::chain_entry::<native::WGPUComputePipelineDescriptorExtras>(
             descriptor.nextInChain,
             native::WGPUSType_ComputePipelineDescriptorExtras,
@@ -560,7 +560,7 @@ unsafe fn map_render_pipeline_descriptor(
                         )
                     })
                     .collect(),
-                // No C knob for this yet: the WGSL spec default is false.
+                // WGPUProgrammableStageDescriptorExtras chain (absent = spec default false).
                 zero_initialize_workgroup_memory: zero_init_from_chain(descriptor.vertex.nextInChain),
             },
             buffers: Cow::Owned(
@@ -671,7 +671,7 @@ unsafe fn map_render_pipeline_descriptor(
                             )
                         })
                         .collect(),
-                    // No C knob for this yet: the WGSL spec default is false.
+                    // WGPUProgrammableStageDescriptorExtras chain (absent = spec default false).
                     zero_initialize_workgroup_memory: zero_init_from_chain(fragment.nextInChain),
                 },
                 targets: Cow::Owned(
@@ -703,7 +703,7 @@ unsafe fn map_render_pipeline_descriptor(
             )
             .map_or(0, |extras| extras.multiviewMask),
         ),
-        // No C knob for a pipeline cache yet: every device starts without one.
+        // Pipeline cache via the descriptor's Extras chain (absent = none).
         cache: crate::utils::chain_entry::<native::WGPURenderPipelineDescriptorExtras>(
             descriptor.nextInChain,
             native::WGPUSType_RenderPipelineDescriptorExtras,
@@ -1933,7 +1933,7 @@ unsafe fn map_mesh_pipeline_descriptor(
                             )
                         })
                         .collect(),
-                    // No C knob for this yet: the WGSL spec default is false.
+                    // WGPUProgrammableStageDescriptorExtras chain (absent = spec default false).
                     zero_initialize_workgroup_memory: zero_init_from_chain(fragment.nextInChain),
                 },
                 targets: Cow::Owned(
