@@ -1,0 +1,8 @@
+/build/
+/dist/
+/target/
+/.cargo/
+__pycache__/
+*.pyc
+.superpowers/
+/.audit/

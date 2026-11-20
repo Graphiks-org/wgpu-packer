@@ -1,0 +1,156 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  oracle_macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi # Review Focus #2 : release, panic=unwind
+      - run: python3 tests/test_checks.py && python3 tests/test_matrix.py
+
+  oracle_linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: sudo apt-get update && sudo apt-get install -y mesa-utils libgl1-mesa-dri libegl1
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi
+      # Structural suites (independent review D5): they run locally but were
+      # never enforced in CI — the unimplemented-stub list in particular.
+      # Linux job: the shell scripts expect a POSIX toolchain.
+      - run: python3 tests/test_version.py && python3 tests/test_unimplemented.py && python3 tests/test_ci.py && python3 tests/test_manifest.py && python3 tests/test_android_targets.py
+      - run: bash scripts/test_pipeline.sh && bash scripts/test_packaging.sh
+
+  oracle_windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: cargo test -p wgpu-packer-ffi
+      - run: cargo test --release -p wgpu-packer-ffi
+
+  cinterop_smoke:
+    # D7 (independent review): the contract as the real consumer sees it —
+    # Kotlin/Native cinterop against packaging/wgpu.def + the static
+    # library, then a Kotlin program that RUNS and checks the values the
+    # header declares (GetLimits status, GetVersion, enumeration,
+    # FreeMembers). This is where the GetLimits return-type regression
+    # (invisible to the Rust oracles) would have been caught.
+    # ubuntu + linux_x64 prebuilt: same cinterop pipeline, no macOS
+    # runner queue (the macOS jobs of this org get cancelled past the
+    # spending limit).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dri libegl1
+      - run: cargo build --release -p wgpu-packer-ffi
+      - run: |
+          curl -sL https://github.com/JetBrains/kotlin/releases/download/v2.4.21/kotlin-native-prebuilt-linux-x86_64-2.4.21.tar.gz -o /tmp/kn.tar.gz
+          mkdir -p /tmp/kn && tar -xzf /tmp/kn.tar.gz -C /tmp/kn --strip-components=1
+          echo "/tmp/kn/bin" >> "$GITHUB_PATH"
+      - run: bash scripts/cinterop-smoke.sh
+
+  build:
+    needs: [oracle_macos, oracle_linux, oracle_windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: macosArm64, runner: macos-15 }
+          - { target: macosX64, runner: macos-15 }
+          - { target: iosArm64, runner: macos-15 }
+          - { target: iosSimulatorArm64, runner: macos-15 }
+          - { target: linuxX64, runner: ubuntu-24.04 }
+          - { target: linuxArm64, runner: ubuntu-24.04 }
+          - { target: windowsMsvcX64, runner: windows-2022 }
+          - { target: mingwX64, runner: ubuntu-24.04 }
+          - { target: androidNativeArm64, runner: ubuntu-24.04 }
+          - { target: androidNativeX64, runner: ubuntu-24.04 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.93.0
+      - if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim
+      - if: matrix.target == 'linuxArm64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo 'CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc' >> "$GITHUB_ENV"
+      - if: matrix.target == 'mingwX64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-mingw-w64-x86-64
+          echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc' >> "$GITHUB_ENV"
+          echo 'CARGO_TARGET_X86_64_PC_WINDOWS_GNU_AR=x86_64-w64-mingw32-ar' >> "$GITHUB_ENV"
+      - if: contains(matrix.target, 'android')
+        # NDK 28 is the first release whose linker aligns shared-library
+        # segments on 16 KiB by default, which Google Play requires. NDK 27
+        # and older produce 4 KiB segments. The ubuntu-24.04 image ships
+        # several NDKs; pick the newest one that is at least 28.
+        run: |
+          sdk="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          ndk="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | awk -F/ '{v=$(NF); split(v, p, "."); if (p[1] >= 28) last=$0} END {print last}')"
+          if [ -z "$ndk" ]; then
+            echo "no NDK >= 28 on this runner" >&2
+            exit 1
+          fi
+          echo "using NDK: $ndk"
+          echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
+      - if: matrix.target == 'windowsMsvcX64'
+        uses: ilammy/msvc-dev-cmd@v1 # MSVC linker, LIB and dumpbin in PATH
+      - if: matrix.target == 'windowsMsvcX64'
+        # msvc-dev-cmd exports LIB to later steps, but the bash shell used by
+        # `run:` does not inherit it reliably; forward it explicitly so cl can
+        # resolve the SDK import libraries (user32.lib, ...).
+        shell: pwsh
+        run: |
+          if ($env:LIB) { "LIB=$env:LIB" >> $env:GITHUB_ENV }
+          else { throw "LIB is not set by msvc-dev-cmd" }
+      - if: matrix.target == 'windowsMsvcX64'
+        # Git for Windows ships its own /usr/bin/link.exe (a coreutils clone),
+        # which shadows MSVC's link.exe when cargo resolves the linker by name.
+        # Point cargo at the real linker explicitly: PATH order is not enough,
+        # because the bash shell prepends Git's usr/bin.
+        shell: pwsh
+        run: |
+          $msvc = (Get-Command link.exe -All | Where-Object { $_.Source -notlike '*Git*' } | Select-Object -First 1).Source
+          if (-not $msvc) { throw "no MSVC link.exe found" }
+          "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvc" >> $env:GITHUB_ENV
+          echo "using $msvc"
+      - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
+      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)
+      - run: ./scripts/package.sh ${{ matrix.target }} static
+      - if: contains(fromJSON('["macosArm64","macosX64","linuxX64","linuxArm64","windowsMsvcX64","mingwX64"]'), matrix.target)
+        run: ./scripts/package.sh ${{ matrix.target }} shared
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          path: dist/*.tar.gz
+

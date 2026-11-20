@@ -1,0 +1,3 @@
+# Fonctions déclarées dans les headers mais volontairement non implémentées.
+# Chaque ligne doit référencer une raison datée ou un numéro d'issue.
+# (Vide à ce jour : l'audit v29.0.1.1 donne 0 manquante / 0 fantôme.)
