@@ -763,6 +763,13 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x00030042,
     /** Vulkan: VK_KHR_external_memory_win32. */
     WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x00030043,
+    /** Vulkan: VK_KHR_external_memory_fd. */
+    WGPUNativeFeature_VulkanExternalMemoryFd = 0x0003004B,
+    /** Vulkan: Linux DMA-BUF import. */
+    WGPUNativeFeature_VulkanExternalMemoryDmaBuf = 0x0003004C,
+    /** Experimental ray-tracing pipelines (acceleration structures are
+     * exposed; wgpu 30 has no ray-tracing pipeline creation yet). */
+    WGPUNativeFeature_RayTracingPipelines = 0x0003004D,
     /** Uniform buffer binding arrays. */
     WGPUNativeFeature_UniformBufferBindingArrays = 0x00030044,
     /** Experimental mesh shaders. */

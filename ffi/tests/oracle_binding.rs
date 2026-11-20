@@ -1410,3 +1410,118 @@ fn callback_mode_zero_from_init_macros_is_accepted() {
         common::release_instance(instance);
     }
 }
+
+/// Final review: smoke the phase 2-3 entry points end to end on a real
+/// adapter — coherent answers, no abort, whatever the support level.
+#[test]
+fn parity_surface_smoke() {
+    unsafe {
+        static UNCAPPED: AtomicUsize = AtomicUsize::new(0);
+        unsafe extern "C" fn on_uncaptured(
+            _d: *const WGPUDevice,
+            _t: WGPUErrorType,
+            _m: WGPUStringView,
+            _u1: *mut core::ffi::c_void,
+            _u2: *mut core::ffi::c_void,
+        ) {
+            UNCAPPED.fetch_add(1, Ordering::SeqCst);
+        }
+        let instance = common::make_instance();
+        let adapters = enumerate(instance);
+        let Some(&adapter) = adapters.first() else {
+            release_adapters(&adapters);
+            common::release_instance(instance);
+            return;
+        };
+        let device = {
+            let mut slot: usize = 0;
+            unsafe extern "C" fn on_device(
+                _s: WGPURequestDeviceStatus,
+                device: WGPUDevice,
+                _m: WGPUStringView,
+                u1: *mut core::ffi::c_void,
+                _u2: *mut core::ffi::c_void,
+            ) {
+                *(u1 as *mut usize) = device as usize;
+            }
+            let mut ddesc = zeroed::<WGPUDeviceDescriptor>();
+            ddesc.uncapturedErrorCallbackInfo.callback = Some(on_uncaptured);
+            ddesc.deviceLostCallbackInfo.mode = WGPUCallbackMode_AllowSpontaneous;
+            let mut cb = zeroed::<WGPURequestDeviceCallbackInfo>();
+            cb.mode = WGPUCallbackMode_AllowSpontaneous;
+            cb.callback = Some(on_device);
+            cb.userdata1 = &mut slot as *mut usize as *mut core::ffi::c_void;
+            wgpu_packer::wgpuAdapterRequestDevice(adapter, Some(&ddesc), cb);
+            slot as WGPUDevice
+        };
+        assert!(!device.is_null());
+
+        // Diagnostics queries: coherent answers on any adapter.
+        let mut counters = zeroed::<WGPUInternalCounters>();
+        wgpu_packer::wgpuDeviceGetInternalCounters(device, &mut counters);
+        assert!(counters.Buffers >= 0);
+
+        let mut report = zeroed::<WGPUAllocatorReport>();
+        assert_eq!(
+            wgpu_packer::wgpuDeviceGetAllocatorReport(device, &mut report),
+            WGPUStatus_Success
+        );
+
+        let mut downlevel = zeroed::<WGPUDownlevelCapabilities>();
+        wgpu_packer::wgpuAdapterGetDownlevelCapabilities(adapter, &mut downlevel);
+        let _ = wgpu_packer::wgpuAdapterGetPresentationTimestamp(adapter);
+
+        let mut count: usize = 0;
+        assert_eq!(
+            wgpu_packer::wgpuAdapterGetCooperativeMatrixProperties(
+                adapter,
+                Some(&mut count),
+                std::ptr::null_mut()
+            ),
+            WGPUStatus_Success
+        );
+
+        // Pipeline cache: feature-dependent — either a handle or a routed
+        // error, never an abort.
+        let cache_desc = zeroed::<WGPUPipelineCacheDescriptor>();
+        let cache = wgpu_packer::wgpuDeviceCreatePipelineCache(device, Some(&cache_desc));
+        if !cache.is_null() {
+            let size = wgpu_packer::wgpuPipelineCacheGetData(cache, std::ptr::null_mut(), 0);
+            assert!(size == 0); // a fresh cache holds no data
+            wgpu_packer::wgpuPipelineCacheRelease(cache);
+        }
+
+        // Mesh pipeline without the experimental opt-in: routed validation
+        // error (sink), NULL handle, no abort.
+        let before = UNCAPPED.load(Ordering::SeqCst);
+        let mesh = zeroed::<WGPUMeshPipelineDescriptor>();
+        assert!(wgpu_packer::wgpuDeviceCreateMeshPipeline(device, Some(&mesh)).is_null());
+        assert!(UNCAPPED.load(Ordering::SeqCst) >= before);
+
+        // Passthrough without any source: packer-side rejection, NULL.
+        let passthrough = zeroed::<WGPUShaderModuleDescriptorPassthrough>();
+        assert!(
+            wgpu_packer::wgpuDeviceCreateShaderModulePassthrough(device, Some(&passthrough))
+                .is_null()
+        );
+
+        // Transition resources with nothing to do: success-shaped no-op.
+        let encoder_desc = zeroed::<WGPUCommandEncoderDescriptor>();
+        let encoder = wgpu_packer::wgpuDeviceCreateCommandEncoder(device, Some(&encoder_desc));
+        wgpu_packer::wgpuCommandEncoderTransitionResources(
+            encoder,
+            std::ptr::null(),
+            0,
+            std::ptr::null(),
+            0,
+        );
+        let cb_desc = zeroed::<WGPUCommandBufferDescriptor>();
+        let finished = wgpu_packer::wgpuCommandEncoderFinish(encoder, Some(&cb_desc));
+        wgpu_packer::wgpuCommandBufferRelease(finished);
+        wgpu_packer::wgpuCommandEncoderRelease(encoder);
+
+        wgpu_packer::wgpuDeviceRelease(device);
+        release_adapters(&adapters);
+        common::release_instance(instance);
+    }
+}

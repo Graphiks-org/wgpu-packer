@@ -207,6 +207,11 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
   handles are upstream-blocked: wgpu-hal's metal Buffer/TextureView/
   Surface have no public accessor (as_raw is private) — they will be
   exposed the day upstream adds them.
+- Pipeline caches: `wgpuDeviceCreatePipelineCache` (seed data +
+  fallback), `wgpuPipelineCacheGetData` (two-call), `wgpuPipelineCacheAddRef`
+  / `wgpuPipelineCacheRelease`.
+- `wgpuCommandEncoderTransitionResources` (see the flags entry above).
+- `wgpuSurfaceGetDisplayHdrInfo` (see the HDR entry above).
 - Ray tracing (acceleration structures): `wgpuDeviceCreateBlas` /
   `wgpuDeviceCreateTlas` (flags, update mode, TLAS max instances),
   `wgpuCommandEncoderBuildAccelerationStructures` (triangle/AABB

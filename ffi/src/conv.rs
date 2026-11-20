@@ -1584,6 +1584,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
         temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryFd);
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf);
+        temp.push(native::WGPUNativeFeature_RayTracingPipelines);
     }
     if features.contains(wgt::Features::TEXTURE_INT64_ATOMIC) {
         temp.push(native::WGPUNativeFeature_TextureInt64Atomic);
@@ -1709,6 +1712,9 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderInt64AtomicAllOps => Some(Features::SHADER_INT64_ATOMIC_ALL_OPS),
         native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
         native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
+        native::WGPUNativeFeature_VulkanExternalMemoryFd => Some(Features::VULKAN_EXTERNAL_MEMORY_FD),
+        native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf => Some(Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF),
+        native::WGPUNativeFeature_RayTracingPipelines => Some(Features::EXPERIMENTAL_RAY_TRACING_PIPELINES),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
         native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
         native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
