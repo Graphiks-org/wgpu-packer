@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Structural test of the pipeline (plan Task 7).
+# Structural test of the build and packaging pipeline.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail() { echo "FAIL: $1" >&2; exit 1; }
@@ -32,7 +32,8 @@ if ./scripts/package.sh macosArm64 bidule >/dev/null 2>&1; then
   fail "unknown kind accepted"
 fi
 
-# Exact wgpu pins (global plan constraint: =30.0.1, never caret)
-grep -q 'version = "=30.0.1"' Cargo.toml || fail "exact wgpu pins (=30.0.1) expected in Cargo.toml"
+# Exact wgpu pins (never caret): Cargo.toml must match WGPU_VERSION in wgpu-pin.env
+expected_pin="$(sed -n 's/^WGPU_VERSION=//p' wgpu-pin.env)"
+grep -q "version = \"=$expected_pin\"" Cargo.toml || fail "exact wgpu pins (=$expected_pin) expected in Cargo.toml"
 
 echo "PIPELINE_STRUCTURE_OK"

@@ -17,9 +17,9 @@ private class AdapterHolder {
 }
 
 fun main() {
-    // build.rs packs 30.0.1.0 MSB-first.
-    check(wgpuGetVersion() == 0x1E000100u) {
-        "wgpuGetVersion returned ${wgpuGetVersion()}, expected 0x1E000100"
+    // build.rs packs 30.0.2.0 MSB-first.
+    check(wgpuGetVersion() == 0x1E000200u) {
+        "wgpuGetVersion returned ${wgpuGetVersion()}, expected 0x1E000200"
     }
 
     val instance = wgpuCreateInstance(null)

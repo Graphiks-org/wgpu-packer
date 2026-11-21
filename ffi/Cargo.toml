@@ -1,6 +1,6 @@
 [package]
 name = "wgpu-packer-ffi"
-version = "30.0.1"
+version = "30.0.2"
 edition = "2021"
 rust-version = "1.93"
 description = "C layer (webgpu.h + wgpu.h) on top of the wgpu crates"

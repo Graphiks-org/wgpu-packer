@@ -21,7 +21,7 @@ shasum -a 256 -c SHA256SUMS
 The archive's `manifest.json` carries `wgpu.crates` and `wgpu.headersRevision`:
 the file name only contains the crates version, not the headers version.
 
-A published release is immutable. For a fix, a new release `v30.0.1.1` is
+A published release is immutable. For a fix, a new release `v30.0.2.1` is
 published; the old one remains downloadable.
 
 The publishing workflow never overwrites an existing file: it therefore
@@ -119,7 +119,7 @@ Android: `-llog -landroid` · Windows MSVC: `user32 gdi32 dxgi d3d12 dxguid` · 
 
 ## Parity extensions (chains, flags and entry points)
 
-Everything wgpu-core/wgpu-types 30.0.1 can express, exposed as native
+Everything wgpu-core/wgpu-types 30.0.2 can express, exposed as native
 extensions — never in webgpu.h. Added by the parity work (phases 1-2).
 
 All of them chain through `nextInChain` and live only in `wgpu.h`:
@@ -163,7 +163,7 @@ All of them chain through `nextInChain` and live only in `wgpu.h`:
 - `WGPUDeviceExtras.tracePath` is now live (api trace capture): it costs
   ~2.6 MB of trace serialization in the static library.
 
-Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
+Documented limitations (no hook in wgpu-core/wgpu-types 30.0.2):
 
 - `WGPUTextureComponentSwizzleDescriptor` (standard chain) stays
   unread: wgpu-types has no component-swizzle field on texture views.
@@ -225,7 +225,7 @@ Documented limitations (no hook in wgpu-core/wgpu-types 30.0.1):
 ## 6. Unimplemented functions (call = contained error)
 
 These symbols are exported but raise `unimplemented!()` when called in
-v30.0.1.0 — do not call them from Kotlin. The panic is contained at the
+v30.0.2.0 — do not call them from Kotlin. The panic is contained at the
 ABI boundary (§5): the call logs an error and returns the type's error
 value (`NULL`, `WGPUStatus_Error`, 0), never an abort. 3 stubs; the
 reasons are detailed in `ffi/src/unimplemented.rs`:
@@ -250,6 +250,6 @@ device-side adapter info and instance futures/waits (§5).
 
 ## 7. Versioning
 
-`<wgpu-major>.<minor>.<patch>.<packer>` — e.g. `30.0.1.0` = wgpu 30.0.1,
+`<wgpu-major>.<minor>.<patch>.<packer>` — e.g. `30.0.2.0` = wgpu 30.0.2,
 packer revision 0. Enums/flags are reserved for ray tracing, video and
 advanced queries (non-breaking additions, spec §5).
