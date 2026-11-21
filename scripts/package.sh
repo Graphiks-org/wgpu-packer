@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: package.sh <kotlinTarget> <static|shared>
-# Produces dist/wgpu-<version>-<kotlinTarget>-<kind>.tar.gz + checksum (spec §6).
+# Produces dist/wgpu-<version>-<kotlinTarget>-<kind>.tar.gz + checksum.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=wgpu-pin.env

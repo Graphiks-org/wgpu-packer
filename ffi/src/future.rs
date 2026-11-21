@@ -89,7 +89,7 @@ fn notify_wait_scope(future_id: u64) {
 pub(crate) fn run_in_wait_scope<R>(poll: impl FnOnce() -> R) -> (R, Vec<u64>) {
     WAIT_SCOPE.with(|scope| {
         let outer = scope.borrow_mut().replace(Vec::new());
-        // Panic safety (pass2 finding 7): the containment at the FFI
+        // Panic safety: the containment at the FFI
         // boundary catches a panicking poll, but this thread-local must be
         // restored no matter what — catch, restore, resume.
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(poll));

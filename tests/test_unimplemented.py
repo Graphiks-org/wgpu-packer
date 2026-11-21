@@ -1,5 +1,5 @@
 """Exported unimplemented!() stubs must be documented in the GUIDE
-(final review, finding 4) — no silent discrepancy (spec §4.5).
+("Unimplemented functions" section) — no silent discrepancy.
 
 The scan covers all of ffi/src: not every stub lives in
 unimplemented.rs (historically 5 lived elsewhere, unnoticed by the

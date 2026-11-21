@@ -1104,8 +1104,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         std::ptr::null(),
         || {
 
-        // The standard path honours a chained WGPUShaderRuntimeChecksDescriptor
-        // (pass1 finding 1): without it, wgpu-types' safe defaults apply.
+        // The standard path honours a chained WGPUShaderRuntimeChecksDescriptor:
+        // without it, wgpu-types' safe defaults apply.
         let runtime_checks = descriptor
             .and_then(|descriptor| {
                 crate::utils::chain_entry::<native::WGPUShaderRuntimeChecksDescriptor>(

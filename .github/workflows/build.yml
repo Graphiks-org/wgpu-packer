@@ -22,7 +22,7 @@ jobs:
         with:
           toolchain: 1.93.0
       - run: cargo test -p wgpu-packer-ffi
-      - run: cargo test --release -p wgpu-packer-ffi # Review Focus #2 : release, panic=unwind
+      - run: cargo test --release -p wgpu-packer-ffi # release: panic containment relies on panic=unwind
       - run: python3 tests/test_checks.py && python3 tests/test_matrix.py
 
   oracle_linux:
@@ -35,7 +35,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y mesa-utils libgl1-mesa-dri libegl1
       - run: cargo test -p wgpu-packer-ffi
       - run: cargo test --release -p wgpu-packer-ffi
-      # Structural suites (independent review D5): they run locally but were
+      # Structural suites: they run locally but were
       # never enforced in CI — the unimplemented-stub list in particular.
       # Linux job: the shell scripts expect a POSIX toolchain.
       - run: python3 tests/test_version.py && python3 tests/test_unimplemented.py && python3 tests/test_ci.py && python3 tests/test_manifest.py && python3 tests/test_android_targets.py
@@ -52,7 +52,7 @@ jobs:
       - run: cargo test --release -p wgpu-packer-ffi
 
   cinterop_smoke:
-    # D7 (independent review): the contract as the real consumer sees it —
+    # The contract as the real consumer sees it —
     # Kotlin/Native cinterop against packaging/wgpu.def + the static
     # library, then a Kotlin program that RUNS and checks the values the
     # header declares (GetLimits status, GetVersion, enumeration,
@@ -144,8 +144,8 @@ jobs:
           if (-not $msvc) { throw "no MSVC link.exe found" }
           "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER=$msvc" >> $env:GITHUB_ENV
           echo "using $msvc"
-      - run: ./scripts/build-target.sh ${{ matrix.target }} # + audit checks.py (Review Focus #4)
-      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # TU + cross static link (finding 5)
+      - run: ./scripts/build-target.sh ${{ matrix.target }} # + the header/symbol audit (tests/checks.py)
+      - run: ./scripts/cross-link-test.sh ${{ matrix.target }} # compile + cross static link
       - run: ./scripts/package.sh ${{ matrix.target }} static
       - if: contains(fromJSON('["macosArm64","macosX64","linuxX64","linuxArm64","windowsMsvcX64","mingwX64"]'), matrix.target)
         run: ./scripts/package.sh ${{ matrix.target }} shared

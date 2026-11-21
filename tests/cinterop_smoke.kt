@@ -1,10 +1,10 @@
-// D7 (independent review): the C contract as the real consumer sees it.
+// The C contract as the real consumer sees it.
 // Compiled by scripts/cinterop-smoke.sh through Kotlin/Native cinterop
 // against the vendored headers + static library, then RUN.
 //
 // Covers the regression classes the Rust oracles cannot see:
-// - R1: a returned enum VALUE as read through the header (GetLimits)
-// - #11: wgpuGetVersion (compile-time WGPU_NATIVE_VERSION)
+// - a returned enum VALUE as read through the header (GetLimits)
+// - wgpuGetVersion (compile-time WGPU_NATIVE_VERSION)
 // - the callback path with an explicit mode + StableRef userdata — the
 //   exact pattern wgpu4k uses (GUIDE §5)
 @file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
@@ -17,7 +17,7 @@ private class AdapterHolder {
 }
 
 fun main() {
-    // #11: build.rs packs 30.0.1.0 MSB-first.
+    // build.rs packs 30.0.1.0 MSB-first.
     check(wgpuGetVersion() == 0x1E000100u) {
         "wgpuGetVersion returned ${wgpuGetVersion()}, expected 0x1E000100"
     }

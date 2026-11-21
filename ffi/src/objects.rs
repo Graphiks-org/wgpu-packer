@@ -88,7 +88,7 @@ pub struct WGPUCommandBufferImpl {
 }
 impl Drop for WGPUCommandBufferImpl {
     fn drop(&mut self) {
-        // Unconditional (pass2 finding 12 + independent review): an
+        // Unconditional: an
         // encoder-finished-but-never-submitted command buffer used to leak
         // its hub entry (the old `open` flag skipped the drop), and the
         // flag made no sense on a shared handle. wgpu-core's registry is

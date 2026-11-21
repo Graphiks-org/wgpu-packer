@@ -176,7 +176,7 @@ pub(crate) fn format_error(err: &(impl error::Error + 'static)) -> String {
     let mut level = 1;
 
     fn print_tree(output: &mut String, level: &mut usize, e: &(dyn error::Error + 'static)) {
-        // Pass3 finding 26: a self-referential source() chain would
+        // A self-referential source() chain would
         // recurse forever; 16 levels is far beyond any real chain.
         if *level > 16 {
             use std::fmt::Write;

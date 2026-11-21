@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit header <-> exported symbols (spec §4.5).
+"""Audit: every header declaration <-> exported symbols.
 
 Every function declared in webgpu.h/wgpu.h must be exported by the
 library (or allowlisted in tests/unimplemented.txt), and every exported

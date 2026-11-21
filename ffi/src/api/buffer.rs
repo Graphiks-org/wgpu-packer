@@ -136,7 +136,7 @@ pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
         std::ptr::null(),
         || {
 
-        // Spec §4.1: no panic crosses the C ABI — an unmapped buffer
+        // No panic crosses the C ABI: an unmapped buffer
         // returns NULL (C contract) instead of the inherited handle_error_fatal.
         let mapped = catch_unwind_contained("wgpuBufferGetConstMappedRange", || {
             let (buffer_id, context) = {
@@ -177,7 +177,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
         std::ptr::null_mut(),
         || {
 
-        // Spec §4.1: no panic crosses the C ABI — an unmapped buffer
+        // No panic crosses the C ABI: an unmapped buffer
         // returns NULL (C contract) instead of the inherited handle_error_fatal.
         let mapped = catch_unwind_contained("wgpuBufferGetMappedRange", || {
             let (buffer_id, context) = {

@@ -27,7 +27,7 @@ pub(crate) unsafe extern "C" fn default_uncaptured_error_handler(
     _userdata2: *mut ::std::os::raw::c_void,
 ) {
     let message = string_view_into_str(message).unwrap_or("");
-    // Spec §4.1: log without panicking — install uncapturedErrorCallbackInfo to
+    // Log without panicking — install uncapturedErrorCallbackInfo to
     // be notified (GUIDE §5).
     log::error!("wgpu uncaptured error (handler par defaut, aucun callback consommateur) : {message}");
 }
@@ -44,7 +44,7 @@ pub(crate) unsafe extern "C" fn default_device_lost_handler(
     _userdata2: *mut ::std::os::raw::c_void,
 ) {
     let message = string_view_into_str(message).unwrap_or("");
-    // Spec §4.1: device loss is not a programming error
+    // Device loss is not a programming error
     // (GPU reset, Android thermal, Windows TDR) — log without panicking, otherwise
     // the process aborts during the consumer's poll.
     log::error!("wgpu device lost (handler par defaut, aucun callback consommateur) : {message}");

@@ -1651,7 +1651,7 @@ extern "C" {
 
 /** Debug only: panic contained by the FFI wrapper. 1 = contained, 0 = no panic. */
 // ---------------------------------------------------------------------------
-// Phase 1 parity additions (independent review): wgpu capabilities the
+// Parity additions: wgpu capabilities the
 // standard chains cannot express. All extensions live here, never in
 // webgpu.h.
 // ---------------------------------------------------------------------------

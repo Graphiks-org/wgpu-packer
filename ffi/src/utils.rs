@@ -336,7 +336,7 @@ pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> O
             crate::conv::WGPU_STRLEN => None,
             0 => Some(""),
             _ => {
-                // Pass3 finding 24: report and treat as absent instead of
+                // Report and treat as absent instead of
                 // panicking (the containment would catch it anyway).
                 log::error!(
                     "WGPUStringView with NULL data and length {}",

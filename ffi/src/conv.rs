@@ -2504,7 +2504,7 @@ mod tests {
 
     #[test]
     fn texture_usage_flags_roundtrip() {
-        // Audit no. 1 and no. 2: COPY_DST was relayed as CopySrc on the C side, and
+        // Regression: COPY_DST was relayed as CopySrc on the C side, and
         // STORAGE_BINDING/TRANSIENT_ATTACHMENT were dropped on the Rust side.
         let flags = native::WGPUTextureUsage_CopyDst
             | native::WGPUTextureUsage_StorageBinding
@@ -2519,7 +2519,7 @@ mod tests {
 
     #[test]
     fn vertex_format_bgra_is_mapped() {
-        // Audit no. 5: WGPUVertexFormat_Unorm8x4BGRA (valid, supported by
+        // Regression: WGPUVertexFormat_Unorm8x4BGRA (valid, supported by
         // wgt 30) was missing from the mapping.
         assert_eq!(
             map_vertex_format(native::WGPUVertexFormat_Unorm8x4BGRA),
@@ -2529,7 +2529,7 @@ mod tests {
 
     #[test]
     fn instance_extras_memory_budgets_are_distinct() {
-        // Audit no. 3: budgetForDeviceLoss was read from
+        // Regression: budgetForDeviceLoss was read from
         // budgetForDeviceCreation (copy-paste).
         let mut extras: native::WGPUInstanceExtras = unsafe { std::mem::zeroed() };
         let creation: u8 = 5;
@@ -2544,7 +2544,7 @@ mod tests {
 
     #[test]
     fn bind_group_layout_view_dimension_undefined_defaults_2d() {
-        // Audit no. 4: viewDimension Undefined "defaults to 2D" (webgpu.h,
+        // viewDimension Undefined "defaults to 2D" (webgpu.h,
         // INIT macros) — texture AND storage texture.
         let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
         entry.binding = 0;
@@ -2570,7 +2570,7 @@ mod tests {
 
     #[test]
     fn bind_group_layout_binding_array_size_standard_field() {
-        // Audit no. 7: the standard bindingArraySize field was ignored (only
+        // Regression: the standard bindingArraySize field was ignored (only
         // the legacy extras WGPUBindGroupLayoutEntryExtras.count was read).
         let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
         entry.binding = 0;

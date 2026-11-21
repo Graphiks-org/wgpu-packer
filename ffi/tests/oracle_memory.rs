@@ -224,7 +224,7 @@ fn const_mapped_range_after_unmap_returns_null() {
         let r1 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
         assert!(!r1.is_null(), "const mapped range available between map and unmap");
         wgpu_packer::wgpuBufferUnmap(buffer);
-        // Spec §4.1: after unmap, NULL — never a panic across the ABI.
+        // After unmap, NULL — never a panic across the ABI.
         let r2 = wgpu_packer::wgpuBufferGetConstMappedRange(buffer, 0, 16);
         assert!(r2.is_null(), "get_const_mapped_range after unmap must return NULL");
 

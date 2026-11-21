@@ -63,7 +63,7 @@ class CI(unittest.TestCase):
         runs = str(self.wf["jobs"]["build"]["steps"])
         self.assertIn("cross-link-test", runs)
         script = open("scripts/cross-link-test.sh").read()
-        self.assertIn("headers_compile.c", script)  # embedded TU §4.5
+        self.assertIn("headers_compile.c", script)  # embedded C translation unit
         self.assertIn("link_main.c", script)
 
 

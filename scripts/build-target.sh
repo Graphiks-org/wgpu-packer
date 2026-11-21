@@ -53,7 +53,7 @@ esac
 rustup target add "$TRIPLE" >/dev/null
 cargo build --locked --release -p wgpu-packer-ffi --target "$TRIPLE"
 
-# Symbol audit (spec §4.5) on this target's library. The audit reads the
+# Symbol audit on this target's library. The audit reads the
 # exports of the shared library when the target ships one (the checks.py
 # dumpbin path needs the DLL), and the static archive otherwise.
 # Only the MSVC DLL can be audited with dumpbin; the mingw DLL has no dumpbin

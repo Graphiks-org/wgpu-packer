@@ -1,3 +1,3 @@
-# Fonctions déclarées dans les headers mais volontairement non implémentées.
-# Chaque ligne doit référencer une raison datée ou un numéro d'issue.
-# (Vide à ce jour : l'audit v29.0.1.1 donne 0 manquante / 0 fantôme.)
+# Functions declared in the headers but intentionally left unimplemented.
+# Each line must cite a dated reason or an issue number.
+# (Empty so far: the header/symbol audit reports 0 missing / 0 ghosts.)

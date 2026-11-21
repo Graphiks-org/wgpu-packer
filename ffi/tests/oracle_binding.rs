@@ -917,7 +917,7 @@ fn texture_binding_view_dimension_explicit_and_derived() {
     }
 }
 
-/// Binding audit #4 + #2: header defaults in binding layouts
+/// Header defaults in binding layouts
 /// (viewDimension Undefined "defaults to 2D") and StorageBinding usage
 /// relayed — wgpu 30 requires it on the view at bind group time.
 #[test]
@@ -951,8 +951,8 @@ fn bind_group_layout_defaults_and_storage_binding_usage() {
         assert!(!layout.is_null(), "header defaults (viewDimension 2D) accepted");
 
         // Sampled texture + storage texture: the
-        // WGPUTextureUsage_StorageBinding bit must survive the mapping (audit
-        // #2) otherwise wgc 30 rejects the bind group.
+        // WGPUTextureUsage_StorageBinding bit must survive the mapping,
+        // otherwise wgc 30 rejects the bind group.
         let mut tdesc = zeroed::<WGPUTextureDescriptor>();
         tdesc.dimension = WGPUTextureDimension_2D;
         tdesc.size = WGPUExtent3D {
@@ -1000,7 +1000,7 @@ fn bind_group_layout_defaults_and_storage_binding_usage() {
     }
 }
 
-/// Binding audit #5 + #6: Unorm8x4BGRA vertex format accepted, and
+/// Unorm8x4BGRA vertex format accepted, and
 /// "hole" in vertex buffers (stepMode Undefined + 0 attributes)
 /// valid according to webgpu.h.
 #[test]
@@ -1068,7 +1068,7 @@ fn render_pipeline_vertex_bgra_format_and_hole() {
     }
 }
 
-/// Binding audit #9: pop on an empty stack = WGPUPopErrorScopeStatus_Error
+/// Pop on an empty stack = WGPUPopErrorScopeStatus_Error
 /// delivered to the callback (webgpu.h), not a panic.
 #[test]
 fn pop_error_scope_empty_stack_returns_error_status() {
@@ -1129,7 +1129,7 @@ fn pop_error_scope_empty_stack_returns_error_status() {
     }
 }
 
-/// Binding audit #11: WGPU_WHOLE_MAP_SIZE in MapAsync = map through
+/// WGPU_WHOLE_MAP_SIZE in MapAsync = map through
 /// the end of the buffer (webgpu.h), not a validation error.
 #[test]
 fn map_async_whole_map_size() {

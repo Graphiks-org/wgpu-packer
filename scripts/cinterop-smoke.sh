@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# D7 (independent review): consume the headers the way wgpu4k does —
+# Consume the headers the way wgpu4k does —
 # Kotlin/Native cinterop against packaging/wgpu.def + the static library —
 # then compile AND RUN a real Kotlin program calling the C ABI.
 #

@@ -117,7 +117,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
             .filter_map(|f| conv::to_native_texture_format(*f))
             .collect::<Vec<_>>();
 
-        // Pass2 finding 10: writing over a struct that still owns arrays (a
+        // Writing over a struct that still owns arrays (a
     // second call without FreeMembers in between) leaks them — say so.
     if !capabilities.formats.is_null()
         || !capabilities.presentModes.is_null()
@@ -265,7 +265,7 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
             .store(true, atomic::Ordering::SeqCst);
 
         match context.surface_present(surface.id) {
-            // Honest statuses (review M5): this header revision's WGPUStatus
+            // Honest statuses: this header revision's WGPUStatus
             // has no SuccessSuboptimal — Suboptimal stays Success with a
             // log, the degraded states report Error.
             Ok(wgt::SurfaceStatus::Good) => native::WGPUStatus_Success,

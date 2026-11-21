@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# CROSS-link test for non-host targets (final review, finding 5):
-# compiles tests/headers_compile.c (TU §4.5) and links tests/link_main.c against
+# Cross-link test for non-host targets:
+# compiles tests/headers_compile.c (a standalone C translation unit) and links
+tests/link_main.c against
 # the static library with the matrix's EXACT linkLibs. Compile + link, no
 # execution. To be called from CI after build-target.sh.
 set -euo pipefail
