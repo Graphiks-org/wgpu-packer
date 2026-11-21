@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 1,
+  "targets": [
+    {
+      "kotlinTarget": "macosArm64",
+      "triple": "aarch64-apple-darwin",
+      "os": "macos",
+      "arch": "arm64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework CoreVideo -framework IOKit -framework Foundation",
+      "deployEnv": {
+        "MACOSX_DEPLOYMENT_TARGET": "10.13"
+      },
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "macosX64",
+      "triple": "x86_64-apple-darwin",
+      "os": "macos",
+      "arch": "x64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework CoreVideo -framework IOKit -framework Foundation",
+      "deployEnv": {
+        "MACOSX_DEPLOYMENT_TARGET": "10.13"
+      },
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "iosArm64",
+      "triple": "aarch64-apple-ios",
+      "os": "ios",
+      "arch": "arm64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit -framework Foundation -liconv",
+      "deployEnv": {
+        "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
+      },
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "iosSimulatorArm64",
+      "triple": "aarch64-apple-ios-sim",
+      "os": "ios",
+      "arch": "arm64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit -framework Foundation -liconv",
+      "deployEnv": {
+        "IPHONEOS_DEPLOYMENT_TARGET": "13.0"
+      },
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "linuxX64",
+      "triple": "x86_64-unknown-linux-gnu",
+      "os": "linux",
+      "arch": "x64",
+      "runner": "ubuntu-24.04",
+      "toolchain": "",
+      "backends": [
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "-ldl -lpthread -lm",
+      "deployEnv": {},
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "linuxArm64",
+      "triple": "aarch64-unknown-linux-gnu",
+      "os": "linux",
+      "arch": "arm64",
+      "runner": "ubuntu-24.04",
+      "toolchain": "",
+      "backends": [
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "-ldl -lpthread -lm",
+      "deployEnv": {},
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "mingwX64",
+      "triple": "x86_64-pc-windows-gnu",
+      "os": "windows",
+      "arch": "x64",
+      "runner": "ubuntu-24.04",
+      "toolchain": "",
+      "backends": [
+        "d3d12",
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "-lws2_32 -luserenv -lntdll -lole32 -loleaut32 -luuid -lbcrypt -ldbghelp",
+      "deployEnv": {},
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "windowsMsvcX64",
+      "triple": "x86_64-pc-windows-msvc",
+      "os": "windows",
+      "arch": "x64",
+      "runner": "windows-2022",
+      "toolchain": "",
+      "backends": [
+        "d3d12",
+        "vulkan",
+        "gl",
+        "null"
+      ],
+      "linkages": [
+        "static",
+        "shared"
+      ],
+      "linkLibs": "user32.lib gdi32.lib dxgi.lib d3d12.lib dxguid.lib",
+      "deployEnv": {},
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "androidNativeArm64",
+      "triple": "aarch64-linux-android",
+      "os": "android",
+      "arch": "arm64",
+      "runner": "ubuntu-24.04",
+      "toolchain": "",
+      "backends": [
+        "vulkan",
+        "gles",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-llog -landroid -lm -ldl",
+      "deployEnv": {
+        "ANDROID_API": "24"
+      },
+      "androidAbi": "arm64-v8a",
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "androidNativeX64",
+      "triple": "x86_64-linux-android",
+      "os": "android",
+      "arch": "x64",
+      "runner": "ubuntu-24.04",
+      "toolchain": "",
+      "backends": [
+        "vulkan",
+        "gles",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-llog -landroid -lm -ldl",
+      "deployEnv": {
+        "ANDROID_API": "24"
+      },
+      "androidAbi": "x86_64",
+      "status": "v1"
+    },
+    {
+      "kotlinTarget": "tvosArm64",
+      "triple": "aarch64-apple-tvos",
+      "os": "tvos",
+      "arch": "arm64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
+      "deployEnv": {
+        "TVOS_DEPLOYMENT_TARGET": "13.0"
+      },
+      "status": "dropped"
+    },
+    {
+      "kotlinTarget": "tvosSimulatorArm64",
+      "triple": "aarch64-apple-tvos-simulator",
+      "os": "tvos",
+      "arch": "arm64",
+      "runner": "macos-15",
+      "toolchain": "",
+      "backends": [
+        "metal",
+        "null"
+      ],
+      "linkages": [
+        "static"
+      ],
+      "linkLibs": "-framework Metal -framework QuartzCore -framework CoreGraphics -framework UIKit",
+      "deployEnv": {
+        "TVOS_DEPLOYMENT_TARGET": "13.0"
+      },
+      "status": "dropped"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Functions declared in the headers but intentionally left unimplemented.
+# Each line must cite a dated reason or an issue number.
+# (Empty so far: the header/symbol audit reports 0 missing / 0 ghosts.)
