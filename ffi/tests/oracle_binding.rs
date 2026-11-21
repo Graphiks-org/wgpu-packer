@@ -1221,11 +1221,11 @@ fn get_limits_returns_wgpu_status_success() {
     }
 }
 
-/// WGPU_NATIVE_VERSION comes from wgpu-pin.env: 30.0.1.0 packed MSB-first
-/// is 0x1E000100. Before the fix the env var was never set: always 0.
+/// WGPU_NATIVE_VERSION comes from wgpu-pin.env: 30.0.2.0 packed MSB-first
+/// is 0x1E000200. Before the fix the env var was never set: always 0.
 #[test]
 fn get_version_reports_the_pinned_version() {
-    assert_eq!(wgpu_packer::wgpuGetVersion(), 0x1E000100);
+    assert_eq!(wgpu_packer::wgpuGetVersion(), 0x1E000200);
 }
 
 /// A `WGPUFutureWaitInfo` array is reusable across WaitAny calls: an entry

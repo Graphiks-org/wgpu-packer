@@ -3,8 +3,9 @@
 //! of wgpu-core/wgpu-types/naga 30:
 //!
 //! - `wgpuInstanceGetWGSLLanguageFeatures` / `wgpuInstanceHasWGSLLanguageFeature`
-//!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgt/naga 29 API
-//!   listing the supported WGSL language features.
+//!   / `wgpuSupportedWGSLLanguageFeaturesFreeMembers`: no wgpu-core 30.0.2 API
+//!   lists the supported WGSL language features (wgpu-types exposes no such
+//!   type; naga publishes no WGSL language-features set either).
 
 use crate::native;
 

@@ -59,7 +59,7 @@ validated; the shared `.so` is not tested.
 
 ```bash
 bash scripts/build-target.sh macosArm64
-bash scripts/package.sh macosArm64 static  # -> dist/wgpu-30.0.1.0-macosArm64-static.tar.gz
+bash scripts/package.sh macosArm64 static  # -> dist/wgpu-30.0.2.0-macosArm64-static.tar.gz
 ```
 
 Android targets require `NDK_HOME` pointing at NDK 28 or newer: NDK 28 is
